@@ -2,21 +2,21 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-
 import config as cfg
 from enum import IntEnum
 
-import matplotlib
-import matplotlib.pyplot as plt
+# Brief:
+# The model tries to learn provided periodical signal from input data.
+# Learned signal pattern can be leveraged for doing something useful.
+# Expects data to have form: [B, S, L], where B is batch size,
+# S is number of signals and L is the signal length.
 
 
-# Define enum, so it is easy to update meaning of data indices
+# The model tries to learn correlation between these data values
+# Could be e.g. time and speed v(t) or angle and magnetic field f(theta)
 class Channel(IntEnum): # Channels in data block
-    ANGLE = 0
-    SIGNAL1 = 1 # torque / speed
-
-# signal 1000, cov hidden 110, linear1 in 166 out 22, linear2 in 2420, out 1000
-
+    BASE = 0 # Base measure that represents advancement. E.g. time/angle/distance.
+    SIG1 = 1 # First measurement channel. These values are sampled with respect to BASE.
 
 class Sequence(nn.Module):
     def __init__(self, hidden=32):
@@ -50,15 +50,15 @@ class Model(object):
     # Replace old input values with shifted signal data; old_tensor cannot be overwritten directly!
     def shift(self, new_tensor, old_tensor):
         tensor = old_tensor.clone() # keep graph
-        tensor[:, Channel.SIGNAL1, :] = new_tensor[:, :]
-        tensor[:, Channel.ANGLE, :-1] = old_tensor[:, Channel.ANGLE, 1:] # shift one forward
+        tensor[:, Channel.SIG1, :] = new_tensor[:, :]
+        tensor[:, Channel.BASE, :-1] = old_tensor[:, Channel.BASE, 1:] # shift one forward
         return tensor
 
     def computeLoss(self, filtered_input_data, filtered_target_data):
         y = self.seq(filtered_input_data)
         if filtered_target_data is not None:
             shift = filtered_target_data.size(2)
-            filtered_target_signal = filtered_target_data[:, Channel.SIGNAL1, :shift]
+            filtered_target_signal = filtered_target_data[:, Channel.SIG1, :shift]
             loss = self.criterion(y[:, :shift], filtered_target_signal) # Easier to compare input
             return loss, y
         return y

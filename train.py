@@ -1,25 +1,17 @@
 from pathlib import Path
 import argparse
 import torch
-import gym
 import numpy as np
-import matplotlib
-import config as cfg
+import gym
 import pulsegen
-
+import config as cfg
 from visualize import plot
 from model import Model, Sequence, Channel
 
-# This model tries to learn a periodical signal from provided input data.
-# After learning, the model can predict future values of similar signal.
-# Generate_data.py can be used to generate input data for the model.
-#
-# number of recordings x rotations x signal length
-# Saved data: [angle, signal1]
-# Data referes to the three dimensional block of data, wherease signal is just a 1d vector
+DATA_DIR = "predictions" # Location where weights and plots are saved to
 
-# Where weights and plots are saved to
-DATA_DIR = "predictions"
+# Brief:
+# Functions in here can be used for training the model defined in model.py
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -43,8 +35,8 @@ def preprocessBatch(input_data, n=3):
 
     filtered_data = input_data.clone()
     for i in range(0, input_data.size(1)):
-        padded_input_data = torch.cat((input_data[i, Channel.SIGNAL1, 0:(n-1)], input_data[i, Channel.SIGNAL1, :]))
-        filtered_data[i, Channel.SIGNAL1, :] = moving_average(padded_input_data, n)
+        padded_input_data = torch.cat((input_data[i, Channel.SIG1, 0:(n-1)], input_data[i, Channel.SIG1, :]))
+        filtered_data[i, Channel.SIG1, :] = moving_average(padded_input_data, n)
     
     return filtered_data
 
