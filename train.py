@@ -1,19 +1,23 @@
-from pathlib import Path
-import argparse
 import torch
+import argparse
 import numpy as np
 import gym
 import pulsegen
 import config as cfg
+from pathlib import Path
 from visualize import plot
 from model import Model, Sequence, Channel
 
-DATA_DIR = "predictions" # Location where weights and plots are saved to
-
-# Brief:
-# Functions in here can be used for training the model defined in model.py
+# Location where weights and plots are saved to
+DATA_DIR = "predictions"
 
 def parseArgs():
+    """
+    Parses provided comman line arguments.
+
+    Returns:
+        argparse: arguments
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--steps", type=int, default=15, help="steps to run")
     parser.add_argument("--show_input", default=False, action="store_true", help="Visualizes input data used for training")
@@ -22,12 +26,16 @@ def parseArgs():
     args = parser.parse_args()
     return args
 
-# Avg-filter input signal, since it can be quite noisy and we don't want to try learn noise.
-# Add padding by copying first few values in the beginning, so the data vector length does not change.
-# input data: [B, 2, N]
-# n: filtering window size
 def preprocessBatch(input_data, n=3):
+    """
+    Preprocesses input data by average filtering filtering it.
+    This reduces noise levels, which boosts learning preformance.
+    May add padding, so that data dimensions can be kept same. 
 
+    Args:
+        input_data (3d array): Data to be processed.
+        n (int, optional): Moving average filtering window size.
+    """
     def moving_average(a, n=3) :
         ret = np.cumsum(a, dtype=float)
         ret[n:] = ret[n:] - ret[:-n]
@@ -40,9 +48,19 @@ def preprocessBatch(input_data, n=3):
     
     return filtered_data
 
-# Gather a data batch with N-rows
-# batch_num x signals_num x signal_len
 def getDataBatch(env):
+    """
+    Collects data which can be used for training.
+    Data is a 3d array: [B, S, L], where B is batch
+    S is recorded signal and L is recorded data value index.
+
+    Args:
+        env (pulsegen): Gym envinment used for data generation.
+
+    Returns:
+        input_data: training input data.
+        target_data: predictions made by the model, should match to this.
+    """
     data = env.recordRotations(rotations=cfg.repetitions, viz=args.show_input)
 
     # Shift datavectors. If input: x[k], then target: x[k+1]
@@ -96,6 +114,8 @@ if __name__ == "__main__":
     # Create a directory for weights and plots
     Path(DATA_DIR).mkdir(exist_ok=True)
 
+    # Read command line arguments
     args = parseArgs()
 
+    # Run training loop
     main(args)
