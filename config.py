@@ -1,9 +1,10 @@
 ###################
 # Data generation #
 ###################
-signal_length = 500       # Signal length (starts from zero)
-step_size = 6.2832 / 500  # Sample step. (2PI / L, for one cycle).
+predict_n = 3
 repetitions = 15          # How many times pattern is repeated during single period
+signal_length = 351      # Signal length (starts from zero)
+step_size = 6.2832 / signal_length  # Sample step. (2PI / L, for one cycle).
 datafile = "traindata"    # Where generated data is saved
 
 harmonics = {             # Signal shape.
@@ -12,14 +13,13 @@ harmonics = {             # Signal shape.
     6 : 4.0
 }
 
-noise = 0.04              # Makes the signal jagged. 0.01 = 1% error.
+noise = 0.01              # Makes the signal jagged. 0.01 = 1% error.
 
 ###################
 #      Model      #
 ###################
 device = "cuda"           # cpu / cuda
-hidden_layers = 32        # Amount of neurons in hidden conv layers (do not change)
-data_length   = signal_length - 1 # Signal length
+hidden = 64              # a base number of hidden neurons. Actual number may be different. 
 
 # Optimizer
 max_iter = 20

@@ -63,9 +63,11 @@ def getDataBatch(env):
     """
     data = env.recordRotations(rotations=cfg.repetitions, viz=args.show_input)
 
-    # Shift datavectors. If input: x[k], then target: x[k+1]
-    input_data = torch.from_numpy(data[..., :-1])
-    target_data = torch.from_numpy(data[..., 1:])
+    # Shift datavectors. If input: x[k], then target: x[k+n]
+    N = cfg.predict_n
+    input_data = torch.from_numpy(data[..., :-N])
+    target_data = torch.from_numpy(data[..., N:])
+    print("input:", input_data.shape, "output:", target_data.shape)
 
     return input_data, target_data
 
