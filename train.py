@@ -8,9 +8,6 @@ from pathlib import Path
 from visualize import plot
 from model import Model, Sequence, Channel
 
-# Location where weights and plots are saved to
-DATA_DIR = "predictions"
-
 def parseArgs():
     """
     Parses provided comman line arguments.
@@ -64,11 +61,9 @@ def getDataBatch(env):
     data = env.recordRotations(rotations=cfg.repetitions, viz=args.show_input)
 
     # Shift datavectors. If input: x[k], then target: x[k+n]
-    N = cfg.predict_n
-    input_data = torch.from_numpy(data[..., :-N])
-    target_data = torch.from_numpy(data[..., N:])
-    print("input:", input_data.shape, "output:", target_data.shape)
-
+    n = cfg.predict_n
+    input_data = torch.from_numpy(data[..., :-n])
+    target_data = torch.from_numpy(data[..., n:])
     return input_data, target_data
 
 def main(args):
@@ -109,12 +104,12 @@ def main(args):
             plot(unfiltered_test_input, data["test_input"], y[:, 1, :], i, args.invert)
 
     # Save outcome
-    torch.save(model.seq.state_dict(), f"{DATA_DIR}/weights.mdl")
+    torch.save(model.seq.state_dict(), f"{cfg.data_dir}/weights.mdl")
 
 if __name__ == "__main__":
 
     # Create a directory for weights and plots
-    Path(DATA_DIR).mkdir(exist_ok=True)
+    Path(cfg.data_dir).mkdir(exist_ok=True)
 
     # Read command line arguments
     args = parseArgs()

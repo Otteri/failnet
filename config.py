@@ -1,34 +1,26 @@
 ###################
 # Data generation #
 ###################
-predict_n = 3
-repetitions = 15          # How many times pattern is repeated during single period
-signal_length = 351      # Signal length (starts from zero)
-step_size = 6.2832 / signal_length  # Sample step. (2PI / L, for one cycle).
-datafile = "traindata"    # Where generated data is saved
+data_dir = "predictions/"  # Where generated data is saved to
+repetitions = 13           # How many times pattern is repeated during single period
+signal_length = 601        # Data signal length (number of samples)
+step_size = 6.2832 / signal_length  # Sampling step. (2PI / L, for one cycle).
+noise = 0.01               # Adds noise to training data. 0.01 = 1% of data max amplitude.
 
-harmonics = {             # Signal shape.
-    1 : 5.5,
-    2 : 1.3,
-    6 : 4.0
+harmonics = {              # Defines signal shape.
+    1 : 5.5,               # First harmonic order and its max amplitude.
+    2 : 1.3,               # Second order
+    6 : 4.0                # ...
 }
-
-noise = 0.01              # Makes the signal jagged. 0.01 = 1% error.
 
 ###################
 #      Model      #
 ###################
-device = "cuda"           # cpu / cuda
-hidden = 64              # a base number of hidden neurons. Actual number may be different. 
+device = "cuda"            # Use cpu / cuda for training
+hidden = 32                # A base number for hidden neurons.
+predict_n = 1              # Sets how many steps into future tries to predict.
 
 # Optimizer
-max_iter = 20
-history_size = 80
-learning_rate = 0.10      # Optimizer lr
-
-
-###################
-#    Plotting     #
-###################
-color = 'b'
-dpi = 100
+max_iter = 20              # Maximum allowed number of iterations
+history_size = 80          # Maximum allowed size for history
+learning_rate = 0.10       # Optimizer lr

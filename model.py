@@ -38,8 +38,12 @@ class Sequence(nn.Module):
         hidden (int, optional): Base number of neurons. Can be used to adjust size and
         learning capabilities of the NN. (Actual number neurons is likely to be different).
 
+        signal_length (int): Length of the data fed to model.
+        
+        predict_n (int): Sets how much in future model should predict.
+        Defaults to 1, which means that predictions from future are not made.
     """
-    def __init__(self, hidden=32):
+    def __init__(self, signal_length=500, hidden=32, predict_n=1):
         super(Sequence, self).__init__()
         channels  = len(Channel) # Number of data channels
         kernel1   = 5  # Conv kernel size
@@ -52,14 +56,14 @@ class Sequence(nn.Module):
         padding2  = 0  # AvgPoll padding (default)
 
         # Calculate layer sizes n1 and n2
-        L_in = cfg.signal_length - cfg.predict_n
+        L_in = signal_length - predict_n
         n1 = floor((hidden / 500.0) * L_in)  # Get actual number of neurons from base.
         L_conv_out = floor((L_in + 2 * padding1 - dilation1 * (kernel1 - 1) - 1) / stride1 + 1)
         L_batch_out = floor((L_conv_out + 2 * padding2 - kernel2) / stride2 + 1)
         n2 = floor(n1 * L_batch_out)        
         
         # Define NN build blocks using calulated sizes
-        self.linear = nn.Linear(n2, cfg.signal_length - 1)
+        self.linear = nn.Linear(n2, signal_length - 1)
         self.conv = nn.Conv1d(channels, n1, kernel1, stride=stride1, padding=padding1, groups=groups1)
         self.avg_pool = nn.AvgPool1d(kernel2, stride=stride2)
         self.flatten = nn.Flatten()
@@ -77,7 +81,7 @@ class Sequence(nn.Module):
 class Model(object):
     def __init__(self, device="cpu"):
         self.device = device
-        self.seq = Sequence(cfg.hidden).double().to(device)
+        self.seq = Sequence(cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
         self.criterion = nn.MSELoss().to(device)
         # use LBFGS as optimizer since we can load the whole data to train
         # LBFGS is very memory intensive, so use history and max iter to adjust memory usage!
