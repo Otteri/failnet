@@ -8,6 +8,12 @@ from pathlib import Path
 from visualize import plot
 from model import Model, Sequence, Channel
 
+# Brief:
+# The model tries to learn provided periodical signal from input data.
+# Learned signal pattern can be leveraged for doing something useful.
+# Expects data to have form: [B, S, L], where B is batch size,
+# S is number of signals and L is the signal length.
+
 def parseArgs():
     """
     Parses provided comman line arguments.

@@ -6,19 +6,12 @@ import config as cfg
 from enum import IntEnum
 from math import floor
 
-# Brief:
-# The model tries to learn provided periodical signal from input data.
-# Learned signal pattern can be leveraged for doing something useful.
-# Expects data to have form: [B, S, L], where B is batch size,
-# S is number of signals and L is the signal length.
-
-
-# The model tries to learn correlation between these data values
-# Could be e.g. time and speed v(t) or angle and magnetic field f(theta)
+# The model tries to learn correlation between features. Features could be
+# e.g. time and speed v(t) or angle and magnetic field f(theta). This enum
+# allows to reference feature vectors in an abstract manner.
 class Channel(IntEnum): # Channels in data block
     BASE = 0 # Base measure that represents advancement. E.g. time/angle/distance.
     SIG1 = 1 # First measurement channel. These values are sampled with respect to BASE.
-
 
 class Sequence(nn.Module):
     """
@@ -35,13 +28,13 @@ class Sequence(nn.Module):
     https://pytorch.org/docs/stable/generated/torch.nn.AvgPool1d.html
     
     Args:
-        hidden (int, optional): Base number of neurons. Can be used to adjust size and
-        learning capabilities of the NN. (Actual number neurons is likely to be different).
+        hidden (int): Base number of neurons. Can be used to adjust size and
+        learning capabilities of the NN. (Actual number of neurons is likely to be different).
 
         signal_length (int): Length of the data fed to model.
         
         predict_n (int): Sets how much in future model should predict.
-        Defaults to 1, which means that predictions from future are not made.
+        Defaults to 1, which means that does not try to predict future.
     """
     def __init__(self, signal_length=500, hidden=32, predict_n=1):
         super(Sequence, self).__init__()
@@ -72,6 +65,15 @@ class Sequence(nn.Module):
         print(f"Using {n1} hidden neurons...")
 
     def forward(self, input_data):
+        """
+        Forwards input data through neural net.
+
+        Args:
+            input_data (tensor): sequential data.
+
+        Returns:
+            tensor: NN output.
+        """
         x = self.avg_pool(F.relu(self.conv(input_data)))
         x = self.batchnorm(x)
         x = self.flatten(x)
@@ -79,48 +81,94 @@ class Sequence(nn.Module):
         return x
 
 class Model(object):
+    """
+    Full model capable of learning and predicting patterns in data sequence.
+    Uses Lightweight Sequence network defined above and LBFGS optimizer.
+
+    Args:
+        device (str): device used for training. cpu / cuda.
+    """
     def __init__(self, device="cpu"):
         self.device = device
         self.seq = Sequence(cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
         self.criterion = nn.MSELoss().to(device)
-        # use LBFGS as optimizer since we can load the whole data to train
+        # use LBFGS as optimizer since we can load full data batch to train
         # LBFGS is very memory intensive, so use history and max iter to adjust memory usage!
         self.optimizer = optim.LBFGS(self.seq.parameters(), lr=cfg.learning_rate,
             max_iter=cfg.max_iter, history_size=cfg.history_size)
 
-    # One step forward shift for signals
-    # Replace old input values with shifted signal data; old_tensor cannot be overwritten directly!
-    # Advance only one step at time (hence 1), but can predict further
-    def shift(self, new_tensor, old_tensor):
+    def _forwardShift(self, new_tensor, old_tensor):
+        """
+        Forwards data tensor one step by shifting data.
+
+        Args:
+            new_tensor (tensor): tensor obtained from NN.
+            old_tensor (tensor): original data tensor.
+
+        Returns:
+            [tensor]: shifted data tensor.
+        """
         N = cfg.predict_n - 1 # indices start from zero
         tensor = old_tensor.clone() # keep graph
         tensor[:, Channel.SIG1, :] = new_tensor[:, N:]
-        tensor[:, Channel.BASE, :-1] = old_tensor[:, Channel.BASE, 1:] # shift one forward
+        tensor[:, Channel.BASE, :-1] = old_tensor[:, Channel.BASE, 1:]
         return tensor
 
-    def computeLoss(self, filtered_input_data, filtered_target_data):
-        y = self.seq(filtered_input_data)
-        if filtered_target_data is not None:
-            shift = filtered_target_data.size(2)
-            filtered_target_signal = filtered_target_data[:, Channel.SIG1, :shift]
-            loss = self.criterion(y[:, :shift], filtered_target_signal) # Easier to compare input
-            return loss, y
-        return y
+    def _computeLoss(self, input_data, target_data):
+        """
+        Passes data through NN and then computes loss.
+        When predicting outside of training, target_data can be same as input_data.
 
-    # In prediction, do not update NN-weights
-    def predict(self, test_input, test_target):
+        Args:
+            input_data (tensor): data used for learning
+            target_data (tensor): data values that NN should obtain
+
+        Returns:
+           tensor: predictions. What NN thinks the values should be.
+           tensor: loss value, which indicates NN performance.
+        """
+        assert input_data.size(2) > 0, "No input data provided. It is required!"
+        assert input_data.shape == target_data.shape, "Target data size must match with input data."
+
+        y = self.seq(input_data)
+        shift = target_data.size(2)
+        target_signal = target_data[:, Channel.SIG1, :shift]
+        loss = self.criterion(y[:, :shift], target_signal) # Easier to compare input
+        return y, loss
+
+    def predict(self, test_input, test_target, verbose=True):
+        """
+        Predicts values in sequence. Does not update NN-weights.
+
+        Args:
+            test_input (array): input data for NN.
+            test_target (array): values that should be obtained.
+
+        Returns:
+            tensor: predictions. What NN thinks the values should be.
+        """
         with torch.no_grad(): # Do not update network when predicting
-            loss, out = self.computeLoss(test_input.to(self.device), test_target.to(self.device))
-            print("prediction loss:", loss.item())
-            out = self.shift(out, test_input) # Combine angle and signal again; use original input data
+            out, loss = self._computeLoss(test_input.to(self.device), test_target.to(self.device))
+            if verbose:
+                print("prediction loss:", loss.item())
+            out = self._forwardShift(out, test_input) # Combine angle and signal again; use original input data
             y = out.detach().numpy()
-        return y #[:, 0] # return the 'new' prediction value
+        return y # [:, 0] # return the 'new' prediction value
 
-    def train(self, train_input, train_target):
-        def closure(): # LBFGS requires closure
+    def train(self, train_input, train_target, verbose=True):
+        """
+        Predicts values in sequence. Updates NN-weigths.
+        LBFGS optimizer requires closure.
+        
+        Args:
+            train_input (array): input data for NN.
+            train_target (array): values that NN should obtain.
+        """
+        def closure():
             self.optimizer.zero_grad()
-            loss, out = self.computeLoss(train_input.to(self.device), train_target.to(self.device))
-            print("loss:", loss.item())
+            out, loss = self._computeLoss(train_input.to(self.device), train_target.to(self.device))
+            if verbose:
+                print("loss:", loss.item())            
             loss.backward()
-            return loss # this comment may prevent learning
+            return loss
         self.optimizer.step(closure)
