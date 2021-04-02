@@ -1,14 +1,24 @@
-# Minseq
-A tiny convolutional neural network for sequential data. Learns to predict patterns and is capable of predicting future values, if data patterns are repeatitive from nature.
+# FailNet - Simple and Robust Failure Detector
 
-Uses [pulsegen](https://github.com/Otteri/gym-envs) for generating training data by default. However, data can be from anywhere as long as it follows model requirements. Model itself is quite felxible, but for efficient computation, data is processed in blocks. Hence, data should be provided as 3D arrays: [B, S, L], where first dimension represents batches, second signals (channels) and third data length. Length and batch sizes can be freely configured.
+FailNet is a failure detector that can be easily integrated to any system. It works in a black-box manner, which allows it to be used easily with anykind of sequential data. Therefore, it doesn't matter much what kind of system you have. The detector aims to be generic, simple, lightweight, robust and reliable. All these properties can be achieved with a lightweight convolutional neural network which is trained to predict patterns and inform user if there is too great difference between predictions and real values.
 
-Example call for training the model:  
-`$ python train.py --steps 15 --make_plots`
+## Installation
+It is recommended to first create a virtual environment, then install requirements:
+```bash
+$ pip install -r requirements.txt
+```
+This installs all required python packages and data generation environemnt. (Installation has been found to work with python 3.8.5 at least. Shold work with other versions as well).
 
 ## Configuration
 Model properties can be configured using `config.py`. Configuration file also allows to adjust generated data properties when using `pulsegen` environment.
 
-## Installation
-`$ pip install -r requirements.txt`  
-This should install all required python packages and data generation environemnt.
+## Usage
+Now you should be able to train the model. Training takes couple of minutes with default configuration.
+```bash
+$ python train.py --make_plots
+```
+After training, you may inspect generated plots in `predictions` directory. You can also find the model weights from the same directory.
+
+## Simulation environment
+The detector can be tested and developed using simulation environment called
+[pulsegen](https://github.com/Otteri/gym-envs). Pulsegen was used in the run examlpe. Another option is to feed recorded data for the model and use this for training.

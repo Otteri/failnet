@@ -22,7 +22,7 @@ def parseArgs():
         argparse: arguments
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--steps", type=int, default=15, help="steps to run")
+    parser.add_argument("--steps", type=int, default=10, help="steps to run")
     parser.add_argument("--show_input", default=False, action="store_true", help="Visualizes input data used for training")
     parser.add_argument("--make_plots", default=False, action="store_true", help="Visualizes learning process during training")
     parser.add_argument("--invert", default=False, action="store_true", help="Invert learning outcome")
