@@ -15,7 +15,7 @@ from detectors import compareSingleValue
 # Expects data to have form: [B, S, L], where B is batch size,
 # S is number of signals and L is the signal length.
 
-def parseArgs():
+def parseArgs() -> argparse:
     """
     Parses provided comman line arguments.
 
@@ -29,7 +29,7 @@ def parseArgs():
     args = parser.parse_args()
     return args
 
-def filterSignal(signal, n=3):
+def filterSignal(signal, n=3) -> torch.tensor:
     """
     Preprocesses input data by average filtering filtering it.
     This reduces noise levels, which can boost learning.
@@ -38,6 +38,9 @@ def filterSignal(signal, n=3):
     Args:
         signal (1d array): Data to be processed.
         n (int, optional): Moving average filter window size.
+
+    Returs:
+        filtered_signal: signal that has been filtered
     """
     # TODO: Unit test that shape stays same -- that padding works
     def moving_average(a, n=3) :
@@ -49,7 +52,7 @@ def filterSignal(signal, n=3):
     filtered_signal = moving_average(padded_signal, n)
     return filtered_signal
 
-def getDataBatch(env):
+def getDataBatch(env) -> (torch.tensor, torch.tensor):
     """
     Collects data which can be used for training.
     Data is a 3d array: [B, S, L], where B is batch
@@ -108,15 +111,6 @@ def main(args):
         # 5) Visualize performance
         if args.make_plots:
             plot(unfiltered_test_input, data["test_input"], y[:, Channel.SIG1, :], i, args.invert)
-
-    # After training, when we have trained network.
-
-    # Logically check if predictions are close, using first batch only
-    actual = data["test_input"].cpu().detach().numpy()
-    actual = actual[0, Channel.SIG1, :]
-    pred =  y[0, Channel.SIG1, :]
-    is_failure = compareSingleValue(actual, pred)
-    print("is failure(s): ", is_failure)
 
     # Save outcome
     model.save_model("failnet.pt")

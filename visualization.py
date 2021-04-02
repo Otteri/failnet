@@ -3,7 +3,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from model import Channel
 
-def plot(input_data, filtered_input, learned, iteration, invert=False):
+def plot(input_data, filtered_input, learned, iteration, invert=False) -> None:
     plt.figure(figsize=(15,7))
     plt.xlabel("X", fontsize=18, labelpad=5)
     plt.ylabel("Y", fontsize=18, labelpad=5)
@@ -25,13 +25,21 @@ def plot(input_data, filtered_input, learned, iteration, invert=False):
     plt.savefig(f"predictions/prediction_{iteration+1}.svg")
     plt.close()
 
-def plot_signal(signal):
+def plot_signals(signals) -> None:
+    """
+    Plots signals with random colors.
+
+    Args:
+        signals (array): a list with 1 to N signals.
+    """
     plt.figure(figsize=(15,7))
     plt.xlabel("X", fontsize=18, labelpad=5)
     plt.ylabel("Y", fontsize=18, labelpad=5)
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=18)
-    
-    x = np.arange(len(signal))
-    plt.plot(x, signal, '-', color='green', label="signal")
+
+    for signal in signals:
+        x = np.arange(len(signal)) # signals can have different length
+        plt.plot(x, signal, '-', color=np.random.rand(3,), label="signal")
+
     plt.show(block=True)

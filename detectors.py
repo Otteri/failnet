@@ -1,6 +1,6 @@
 # Different failure detection implementations for various cases
 
-def compareSingleValue(actual, pred) -> bool:
+def compareSingleValue(actual, pred, epsilon) -> bool:
     """
     Compares predictions and measurement values from a single scan
 
@@ -10,7 +10,6 @@ def compareSingleValue(actual, pred) -> bool:
     Returns:
         boolean which tells if threshold was exceeded and if there is an issue.
     """
-    epsilon = 2.0
     is_failure = False
 
     assert len(actual) == len(pred), "Dimension are different, How!?!"
