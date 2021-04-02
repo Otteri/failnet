@@ -88,7 +88,8 @@ class Model(object):
     Args:
         device (str): device used for training. cpu / cuda.
     """
-    def __init__(self, device="cpu"):
+    def __init__(self, train=True, device="cpu"):            
+        self.train = train
         self.device = device
         self.seq = Sequence(cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
         self.criterion = nn.MSELoss().to(device)
@@ -96,6 +97,10 @@ class Model(object):
         # LBFGS is very memory intensive, so use history and max iter to adjust memory usage!
         self.optimizer = optim.LBFGS(self.seq.parameters(), lr=cfg.learning_rate,
             max_iter=cfg.max_iter, history_size=cfg.history_size)
+        
+        # Neede, so we can put model into eval mode with ONNX generation
+        if not self.train:
+            self.seq.eval()
 
     def _forwardShift(self, new_tensor, old_tensor):
         """
@@ -152,7 +157,7 @@ class Model(object):
             if verbose:
                 print("prediction loss:", loss.item())
             out = self._forwardShift(out, test_input) # Combine angle and signal again; use original input data
-            y = out.detach().numpy()
+            y = out.cpu().detach().numpy()
         return y # [:, 0] # return the 'new' prediction value
 
     def train(self, train_input, train_target, verbose=True):

@@ -70,6 +70,29 @@ def getDataBatch(env):
     target_data = torch.from_numpy(data[..., n:])
     return input_data, target_data
 
+def compareSingleValue(actual, pred) -> bool:
+    """
+    Compares predictions and measurement values from a single scan
+
+    Args:
+        pred (1d array): Prections made by the NN
+        actual (1d array): Measured values
+    Returns:
+        boolean which tells if threshold was exceeded and if there is an issue.
+    """
+    epsilon = 2.0
+    is_failure = False
+
+    assert len(actual) == len(pred), "Dimension are different, How!?!"
+
+    for i in range(0, len(actual)):
+        diff = abs(actual[i] - pred[i])
+        print("diff: ", diff)
+        if diff > epsilon:
+            is_failure = True
+
+    return is_failure
+
 def main(args):
 
     env = gym.make("FourierSeries-v0", config_path="config.py")
@@ -100,14 +123,23 @@ def main(args):
                 batch[Channel.SIG1, :] = filterSignal(signal)
 
         # 3) Train the model with collected data
-        model.train(data["train_input"], data["train_target"])
+        model.train((data["train_input"], data["train_target"]))
 
         # 4) Check how the model is performing
-        y = model.predict(data["test_input"], data["test_target"])
+        y = model.predict((data["test_input"], data["test_target"]))
 
         # 5) Visualize performance
         if args.make_plots:
             plot(unfiltered_test_input, data["test_input"], y[:, Channel.SIG1, :], i, args.invert)
+
+    # After training, when we have trained network.
+
+    # Logically check if predictions are close, using first batch only
+    actual = data["test_input"].cpu().detach().numpy()
+    actual = actual[0, Channel.SIG1, :]
+    pred =  y[0, Channel.SIG1, :]
+    is_failure = compareSingleValue(actual, pred)
+    print("is failure(s): ", is_failure)
 
     # Save outcome
     torch.save(model.seq.state_dict(), f"{cfg.data_dir}/weights.mdl")
