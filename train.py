@@ -29,27 +29,25 @@ def parseArgs():
     args = parser.parse_args()
     return args
 
-def preprocessBatch(input_data, n=3):
+def filterSignal(signal, n=3):
     """
     Preprocesses input data by average filtering filtering it.
-    This reduces noise levels, which boosts learning preformance.
-    May add padding, so that data dimensions can be kept same. 
+    This reduces noise levels, which can boost learning.
+    Padding can be added, so that data dimensions stay the same.
 
     Args:
-        input_data (3d array): Data to be processed.
-        n (int, optional): Moving average filtering window size.
+        signal (1d array): Data to be processed.
+        n (int, optional): Moving average filter window size.
     """
+    # TODO: Unit test that shape stays same -- that padding works
     def moving_average(a, n=3) :
         ret = np.cumsum(a, dtype=float)
         ret[n:] = ret[n:] - ret[:-n]
         return ret[n - 1:] / n
 
-    filtered_data = input_data.clone()
-    for i in range(0, input_data.size(1)):
-        padded_input_data = torch.cat((input_data[i, Channel.SIG1, 0:(n-1)], input_data[i, Channel.SIG1, :]))
-        filtered_data[i, Channel.SIG1, :] = moving_average(padded_input_data, n)
-    
-    return filtered_data
+    padded_signal = torch.cat((signal[0:(n-1)], signal[:]))
+    filtered_signal = moving_average(padded_signal, n)
+    return filtered_signal
 
 def getDataBatch(env):
     """
@@ -93,11 +91,13 @@ def main(args):
         # 1) Get data
         data["train_input"], data["train_target"] = getDataBatch(env) # Use different data for \
         data["test_input"], data["test_target"] = getDataBatch(env)   # training and testing...
-        unfiltered_test_input = data["test_input"] # for visualization
+        unfiltered_test_input = data["test_input"].clone() # for visualization
 
         # 2) Preprocess data: filter it
         for batch_name, batch_data in data.items():
-            data[batch_name] = preprocessBatch(batch_data, n=5)
+            for batch in batch_data:
+                signal = batch[Channel.SIG1, :]
+                batch[Channel.SIG1, :] = filterSignal(signal)
 
         # 3) Train the model with collected data
         model.train(data["train_input"], data["train_target"])
@@ -107,7 +107,7 @@ def main(args):
 
         # 5) Visualize performance
         if args.make_plots:
-            plot(unfiltered_test_input, data["test_input"], y[:, 1, :], i, args.invert)
+            plot(unfiltered_test_input, data["test_input"], y[:, Channel.SIG1, :], i, args.invert)
 
     # Save outcome
     torch.save(model.seq.state_dict(), f"{cfg.data_dir}/weights.mdl")

@@ -10,8 +10,8 @@ from math import floor
 # e.g. time and speed v(t) or angle and magnetic field f(theta). This enum
 # allows to reference feature vectors in an abstract manner.
 class Channel(IntEnum): # Channels in data block
-    BASE = 0 # Base measure that represents advancement. E.g. time/angle/distance.
-    SIG1 = 1 # First measurement channel. These values are sampled with respect to BASE.
+    #BASE = 0 # Base measure that represents advancement. E.g. time/angle/distance.
+    SIG1 = 0 # First measurement channel. These values are sampled with respect to BASE.
 
 class Sequence(nn.Module):
     """
@@ -111,7 +111,7 @@ class Model(object):
         N = cfg.predict_n - 1 # indices start from zero
         tensor = old_tensor.clone() # keep graph
         tensor[:, Channel.SIG1, :] = new_tensor[:, N:]
-        tensor[:, Channel.BASE, :-1] = old_tensor[:, Channel.BASE, 1:]
+        #tensor[:, Channel.BASE, :-1] = old_tensor[:, Channel.BASE, 1:]
         return tensor
 
     def _computeLoss(self, input_data, target_data):
