@@ -62,7 +62,7 @@ class Sequence(nn.Module):
         self.flatten = nn.Flatten()
         self.batchnorm = nn.BatchNorm1d(n1)
 
-        print(f"Using {n1} hidden neurons...")
+        print(f"[INFO] using {n1} hidden neurons.")
 
     def forward(self, input_data):
         """
@@ -86,10 +86,11 @@ class Model(object):
     Uses Lightweight Sequence network defined above and LBFGS optimizer.
 
     Args:
-        training (bool): Training or eval mode. Should we update weights?
-        device (str): device used for training. cpu / cuda.
+        training (bool): Sets if the model is in training or eval mode.
+        device (str): device used for training and predicting. cpu / cuda.
+        load_path (str): Path to a model save file, which will be loaded.
     """
-    def __init__(self, training=True, device="cpu"):
+    def __init__(self, training=True, device="cpu", load_path=None):
         self.training = training
         self.device = device
         self.seq = Sequence(cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
@@ -99,9 +100,16 @@ class Model(object):
         self.optimizer = optim.LBFGS(self.seq.parameters(), lr=cfg.learning_rate,
             max_iter=cfg.max_iter, history_size=cfg.history_size)
         
+        if load_path:
+            checkpoint = torch.load(load_path)
+            self.seq.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            print("[INFO] model has been loaded succesfully!")
+
         # Needed, so we can put model into eval mode with ONNX generation
-        if not self.train:
+        if not self.training:
             self.seq.eval()
+            print("[INFO] evaluation mode has been enabled.")
 
     def _forwardShift(self, new_tensor, old_tensor):
         """
@@ -117,7 +125,6 @@ class Model(object):
         N = cfg.predict_n - 1 # indices start from zero
         tensor = old_tensor.clone() # keep graph
         tensor[:, Channel.SIG1, :] = new_tensor[:, N:]
-        #tensor[:, Channel.BASE, :-1] = old_tensor[:, Channel.BASE, 1:]
         return tensor
 
     def _computeLoss(self, input_data, target_data):
@@ -178,3 +185,29 @@ class Model(object):
             loss.backward()
             return loss
         self.optimizer.step(closure)
+
+    def save_model(self, model_path, epoch=None, loss=None):
+        """
+        Saves current state of the model.
+
+        Args:
+            model_path (str): path + filename + extension
+            epoch (optional)
+            loss (optional)
+        """
+        torch.save({
+                    'model_state_dict': self.seq.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
+                    'epoch': epoch,
+                    'loss': loss,
+                    }, model_path)
+
+    def load_model(self, model_path):
+        """
+        Loads the model from a file.
+
+        Args:
+            model_path (str): Path to the saved model
+        """
+        self.seq = torch.load(model_path)
+        print("Model has been loaded")

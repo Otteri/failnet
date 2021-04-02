@@ -13,8 +13,7 @@ dummy_data = np.zeros((1, 1, cfg.signal_length))
 dummy_input = torch.from_numpy(dummy_data[..., :-n]).to(cfg.device)
 
 # Create a new model
-# TODO: load weights, we want ONNX from a trained model
-nn_model = Model(training=False, device=cfg.device).seq
+nn_model = Model(training=False, device=cfg.device, load_path="failnet.pt").seq
 
 # Only for readability
 input_names = [ "input_batch" ]
