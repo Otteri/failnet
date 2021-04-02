@@ -86,19 +86,20 @@ class Model(object):
     Uses Lightweight Sequence network defined above and LBFGS optimizer.
 
     Args:
+        training (bool): Training or eval mode. Should we update weights?
         device (str): device used for training. cpu / cuda.
     """
-    def __init__(self, train=True, device="cpu"):            
-        self.train = train
+    def __init__(self, training=True, device="cpu"):
+        self.training = training
         self.device = device
         self.seq = Sequence(cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
         self.criterion = nn.MSELoss().to(device)
-        # use LBFGS as optimizer since we can load full data batch to train
+        # Use LBFGS as optimizer since we can load full data batch to train
         # LBFGS is very memory intensive, so use history and max iter to adjust memory usage!
         self.optimizer = optim.LBFGS(self.seq.parameters(), lr=cfg.learning_rate,
             max_iter=cfg.max_iter, history_size=cfg.history_size)
         
-        # Neede, so we can put model into eval mode with ONNX generation
+        # Needed, so we can put model into eval mode with ONNX generation
         if not self.train:
             self.seq.eval()
 
@@ -152,7 +153,7 @@ class Model(object):
         Returns:
             tensor: predictions. What NN thinks the values should be.
         """
-        with torch.no_grad(): # Do not update network when predicting
+        with torch.no_grad(): # Do not update network -> reduced memory usage
             out, loss = self._computeLoss(test_input.to(self.device), test_target.to(self.device))
             if verbose:
                 print("prediction loss:", loss.item())

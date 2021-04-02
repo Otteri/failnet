@@ -5,8 +5,9 @@ import gym
 import pulsegen
 import config as cfg
 from pathlib import Path
-from visualize import plot
+from visualization import plot
 from model import Model, Sequence, Channel
+from detectors import compareSingleValue
 
 # Brief:
 # The model tries to learn provided periodical signal from input data.
@@ -70,29 +71,6 @@ def getDataBatch(env):
     target_data = torch.from_numpy(data[..., n:])
     return input_data, target_data
 
-def compareSingleValue(actual, pred) -> bool:
-    """
-    Compares predictions and measurement values from a single scan
-
-    Args:
-        pred (1d array): Prections made by the NN
-        actual (1d array): Measured values
-    Returns:
-        boolean which tells if threshold was exceeded and if there is an issue.
-    """
-    epsilon = 2.0
-    is_failure = False
-
-    assert len(actual) == len(pred), "Dimension are different, How!?!"
-
-    for i in range(0, len(actual)):
-        diff = abs(actual[i] - pred[i])
-        print("diff: ", diff)
-        if diff > epsilon:
-            is_failure = True
-
-    return is_failure
-
 def main(args):
 
     env = gym.make("FourierSeries-v0", config_path="config.py")
@@ -105,7 +83,7 @@ def main(args):
     }
 
     # Create a new model
-    model = Model(device=cfg.device)
+    model = Model(training=True, device=cfg.device)
 
     # Start training
     for i in range(args.steps):
@@ -123,10 +101,10 @@ def main(args):
                 batch[Channel.SIG1, :] = filterSignal(signal)
 
         # 3) Train the model with collected data
-        model.train((data["train_input"], data["train_target"]))
+        model.train(data["train_input"], data["train_target"])
 
         # 4) Check how the model is performing
-        y = model.predict((data["test_input"], data["test_target"]))
+        y = model.predict(data["test_input"], data["test_target"])
 
         # 5) Visualize performance
         if args.make_plots:

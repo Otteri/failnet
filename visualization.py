@@ -24,3 +24,14 @@ def plot(input_data, filtered_input, learned, iteration, invert=False):
 
     plt.savefig(f"predictions/prediction_{iteration+1}.svg")
     plt.close()
+
+def plot_signal(signal):
+    plt.figure(figsize=(15,7))
+    plt.xlabel("X", fontsize=18, labelpad=5)
+    plt.ylabel("Y", fontsize=18, labelpad=5)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
+    
+    x = np.arange(len(signal))
+    plt.plot(x, signal, '-', color='green', label="signal")
+    plt.show(block=True)
