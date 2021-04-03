@@ -19,6 +19,9 @@ $ python train.py --make_plots
 ```
 After training, you may inspect generated plots in `predictions` directory. You can also find the model weights from the same directory.
 
+## ONNX
+Pytorch model can be converted to ONNX model with `pytorch2onnx.py` script. ONNX model can run with `run_onnx.py`.
+
 ## Simulation environment
 The detector can be tested and developed using simulation environment called
 [pulsegen](https://github.com/Otteri/gym-envs). Pulsegen was used in the run examlpe. Another option is to feed recorded data for the model and use this for training.

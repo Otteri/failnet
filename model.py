@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -6,12 +7,9 @@ import config as cfg
 from enum import IntEnum
 from math import floor
 
-# The model tries to learn correlation between features. Features could be
-# e.g. time and speed v(t) or angle and magnetic field f(theta). This enum
-# allows to reference feature vectors in an abstract manner.
+# This enum allows to reference feature vectors in an abstract manner.
 class Channel(IntEnum): # Channels in data block
-    BASE = 0 # Base measure that represents advancement. E.g. time/angle/distance.
-    SIG1 = 1 # First measurement channel. These values are sampled with respect to BASE.
+    SIG1 = 0 # First measurement channel.
 
 class Sequence(nn.Module):
     """
@@ -36,7 +34,7 @@ class Sequence(nn.Module):
         predict_n (int): Sets how much in future model should predict.
         Defaults to 1, which means that does not try to predict future.
     """
-    def __init__(self, signal_length=500, hidden=32, predict_n=1):
+    def __init__(self, signal_length=500, hidden=32, predict_n=1) -> None:
         super(Sequence, self).__init__()
         channels  = len(Channel) # Number of data channels
         kernel1   = 5  # Conv kernel size
@@ -62,9 +60,9 @@ class Sequence(nn.Module):
         self.flatten = nn.Flatten()
         self.batchnorm = nn.BatchNorm1d(n1)
 
-        print(f"Using {n1} hidden neurons...")
+        print(f"[INFO] using {n1} hidden neurons.")
 
-    def forward(self, input_data):
+    def forward(self, input_data) -> torch.tensor:
         """
         Forwards input data through neural net.
 
@@ -86,18 +84,32 @@ class Model(object):
     Uses Lightweight Sequence network defined above and LBFGS optimizer.
 
     Args:
-        device (str): device used for training. cpu / cuda.
+        training (bool): Sets if the model is in training or eval mode.
+        device (str): device used for training and predicting. cpu / cuda.
+        load_path (str): Path to a model save file, which will be loaded.
     """
-    def __init__(self, device="cpu"):
+    def __init__(self, training=True, device="cpu", load_path=None) -> None:
+        self.training = training
         self.device = device
         self.seq = Sequence(cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
         self.criterion = nn.MSELoss().to(device)
-        # use LBFGS as optimizer since we can load full data batch to train
+        # Use LBFGS as optimizer since we can load full data batch to train
         # LBFGS is very memory intensive, so use history and max iter to adjust memory usage!
         self.optimizer = optim.LBFGS(self.seq.parameters(), lr=cfg.learning_rate,
             max_iter=cfg.max_iter, history_size=cfg.history_size)
+        
+        if load_path:
+            checkpoint = torch.load(load_path)
+            self.seq.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            print("[INFO] model has been loaded succesfully!")
 
-    def _forwardShift(self, new_tensor, old_tensor):
+        # Needed, so we can put model into eval mode with ONNX generation
+        if not self.training:
+            self.seq.eval()
+            print("[INFO] evaluation mode has been enabled.")
+
+    def _forwardShift(self, new_tensor, old_tensor) -> torch.tensor:
         """
         Forwards data tensor one step by shifting data.
 
@@ -111,10 +123,9 @@ class Model(object):
         N = cfg.predict_n - 1 # indices start from zero
         tensor = old_tensor.clone() # keep graph
         tensor[:, Channel.SIG1, :] = new_tensor[:, N:]
-        tensor[:, Channel.BASE, :-1] = old_tensor[:, Channel.BASE, 1:]
         return tensor
 
-    def _computeLoss(self, input_data, target_data):
+    def _computeLoss(self, input_data, target_data) -> (torch.tensor, torch.tensor):
         """
         Passes data through NN and then computes loss.
         When predicting outside of training, target_data can be same as input_data.
@@ -136,7 +147,7 @@ class Model(object):
         loss = self.criterion(y[:, :shift], target_signal) # Easier to compare input
         return y, loss
 
-    def predict(self, test_input, test_target, verbose=True):
+    def predict(self, test_input, test_target, verbose=True) -> np.array:
         """
         Predicts values in sequence. Does not update NN-weights.
 
@@ -145,17 +156,17 @@ class Model(object):
             test_target (array): values that should be obtained.
 
         Returns:
-            tensor: predictions. What NN thinks the values should be.
+            array: predictions. What NN thinks the values should be.
         """
-        with torch.no_grad(): # Do not update network when predicting
+        with torch.no_grad(): # Do not update network -> reduced memory usage
             out, loss = self._computeLoss(test_input.to(self.device), test_target.to(self.device))
             if verbose:
                 print("prediction loss:", loss.item())
             out = self._forwardShift(out, test_input) # Combine angle and signal again; use original input data
-            y = out.detach().numpy()
+            y = out.cpu().detach().numpy()
         return y # [:, 0] # return the 'new' prediction value
 
-    def train(self, train_input, train_target, verbose=True):
+    def train(self, train_input, train_target, verbose=True) -> None:
         """
         Predicts values in sequence. Updates NN-weigths.
         LBFGS optimizer requires closure.
@@ -172,3 +183,19 @@ class Model(object):
             loss.backward()
             return loss
         self.optimizer.step(closure)
+
+    def save_model(self, model_path, epoch=None, loss=None) -> None:
+        """
+        Saves current state of the model.
+
+        Args:
+            model_path (str): path + filename + extension
+            epoch (optional)
+            loss (optional)
+        """
+        torch.save({
+                    'model_state_dict': self.seq.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
+                    'epoch': epoch,
+                    'loss': loss,
+                    }, model_path)
