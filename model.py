@@ -3,13 +3,62 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import config as cfg
-from enum import IntEnum
 from math import floor
 
-# This enum allows to reference feature vectors in an abstract manner.
-class Channel(IntEnum): # Channels in data block
-    SIG1 = 0 # First measurement channel.
+class Batch(object):
+    """
+    The aim of this datastructure is to recude user errors by defining clear
+    ways to handle data. Some correctness asserts can be done as well.
+    Internally, data is stored to 3d tensor: [B, S, L], where B is batch
+    S is signal channel and L is data value index. Because data is converted
+    to tensor, the NN model can use class data directly for computation.
+    It is beneficial to keep data structure very simple, so this class
+    is not a requirement for running the model (ONNX).
+
+    Default zero initialization values allow premature initialization and
+    make assigning possible. Notice, that none of the b,s,l values should
+    stay zero when storing real data. You should always have at least one
+    batch with certain length signal(s).
+    
+    Args:
+        b (int) : number of batches.
+        s (int) : number of channels (different signals)
+        l (int) : signal length.
+    """
+    def __init__(self, b=0, s=0, l=0): # Use config to set these
+        self.data = torch.zeros(b, s, l, dtype=torch.float64)
+        self.n = 0
+        self.end = b # size for 1st dim
+        self.shape = self.data.shape
+
+    def __len__(self):
+        return self.end
+
+    def __get__(self):
+        return self.data
+
+    def __set__(self, obj):
+        self.data = torch.from_numpy(obj)
+
+    def __setitem__(self, indices, signal_data):
+        i, j = indices
+        self.data[i, j, :] = torch.from_numpy(np.asarray(signal_data))
+
+    def __getitem__(self, indices):
+        i, j = indices
+        return self.data[i, j, :]
+
+    def __iter__(self):
+        self.n = 0
+        return self
+
+    def __next__(self):
+        if self.n < self.end:
+            signals = self.data[self.n, :, :]
+            self.n += 1
+            return signals
+        else:
+            raise StopIteration
 
 class Sequence(nn.Module):
     """
@@ -34,9 +83,9 @@ class Sequence(nn.Module):
         predict_n (int): Sets how much in future model should predict.
         Defaults to 1, which means that does not try to predict future.
     """
-    def __init__(self, signal_length=500, hidden=32, predict_n=1) -> None:
+    def __init__(self, channels=1, signal_length=500, hidden=32, predict_n=1) -> None:
         super(Sequence, self).__init__()
-        channels  = len(Channel) # Number of data channels
+        channels  = channels # Number of data channels (in batches)
         kernel1   = 5  # Conv kernel size
         stride1   = 3  # Conv stride size
         padding1  = 2  # Conv padding size
@@ -88,15 +137,17 @@ class Model(object):
         device (str): device used for training and predicting. cpu / cuda.
         load_path (str): Path to a model save file, which will be loaded.
     """
-    def __init__(self, training=True, device="cpu", load_path=None) -> None:
+    def __init__(self, training=True, device="cpu", load_path=None, signal_length=500, hidden=32, predict_n=1, lr=0.10, max_iter=20, history_size=80) -> None:
         self.training = training
         self.device = device
-        self.seq = Sequence(cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
+        self.seq = Sequence(1, signal_length, hidden, predict_n).double().to(device)
         self.criterion = nn.MSELoss().to(device)
         # Use LBFGS as optimizer since we can load full data batch to train
         # LBFGS is very memory intensive, so use history and max iter to adjust memory usage!
-        self.optimizer = optim.LBFGS(self.seq.parameters(), lr=cfg.learning_rate,
-            max_iter=cfg.max_iter, history_size=cfg.history_size)
+        self.optimizer = optim.LBFGS(self.seq.parameters(), lr=lr,
+            max_iter=max_iter, history_size=history_size)
+
+        self.predict_n = predict_n
         
         if load_path:
             checkpoint = torch.load(load_path)
@@ -120,9 +171,9 @@ class Model(object):
         Returns:
             [tensor]: shifted data tensor.
         """
-        N = cfg.predict_n - 1 # indices start from zero
+        N = self.predict_n - 1 # indices start from zero
         tensor = old_tensor.clone() # keep graph
-        tensor[:, Channel.SIG1, :] = new_tensor[:, N:]
+        tensor[:, 0, :] = new_tensor[:, N:]
         return tensor
 
     def _computeLoss(self, input_data, target_data) -> (torch.tensor, torch.tensor):
@@ -143,7 +194,7 @@ class Model(object):
 
         y = self.seq(input_data)
         shift = target_data.size(2)
-        target_signal = target_data[:, Channel.SIG1, :shift]
+        target_signal = target_data[:, 0, :shift]
         loss = self.criterion(y[:, :shift], target_signal) # Easier to compare input
         return y, loss
 
@@ -152,17 +203,17 @@ class Model(object):
         Predicts values in sequence. Does not update NN-weights.
 
         Args:
-            test_input (array): input data for NN.
-            test_target (array): values that should be obtained.
+            test_input (Batch): input data for NN.
+            test_target (Batch): values that should be obtained.
 
         Returns:
-            array: predictions. What NN thinks the values should be.
+            np.array: predictions. What NN thinks the values should be.
         """
         with torch.no_grad(): # Do not update network -> reduced memory usage
-            out, loss = self._computeLoss(test_input.to(self.device), test_target.to(self.device))
+            out, loss = self._computeLoss(test_input.data.to(self.device), test_target.data.to(self.device))
             if verbose:
                 print("prediction loss:", loss.item())
-            out = self._forwardShift(out, test_input) # Combine angle and signal again; use original input data
+            out = self._forwardShift(out, test_input.data)
             y = out.cpu().detach().numpy()
         return y # [:, 0] # return the 'new' prediction value
 
@@ -172,12 +223,12 @@ class Model(object):
         LBFGS optimizer requires closure.
         
         Args:
-            train_input (array): input data for NN.
-            train_target (array): values that NN should obtain.
+            train_input (Batch): input data for NN.
+            train_target (Batch): values that NN should obtain.
         """
         def closure():
             self.optimizer.zero_grad()
-            out, loss = self._computeLoss(train_input.to(self.device), train_target.to(self.device))
+            out, loss = self._computeLoss(train_input.data.to(self.device), train_target.data.to(self.device))
             if verbose:
                 print("loss:", loss.item())            
             loss.backward()
