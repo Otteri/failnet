@@ -11,6 +11,52 @@ from math import floor
 class Channel(IntEnum): # Channels in data block
     SIG1 = 0 # First measurement channel.
 
+# The aim of this datastructure is to recude user errors by
+# defining clear ways to handle data while also doing checks.
+# Data is stored as a 3d array: [B, S, L], where B is batch
+# S is recorded signal and L is recorded data value index.
+class Batch(object):
+    """
+    Shape [B, S, L]
+    Data is stored as a torch tensor, so model can use data directly.
+    """
+    def __init__(self, b, s, l): # Use config to set these
+        self.data = torch.zeros(b, s, l, dtype=torch.float64)
+        self.n = 0
+        self.end = b # size for 1st dim
+        self.shape = self.data.shape
+
+        self.consider_axis = 0
+
+    def __len__(self):
+        return self.end
+
+    def __get__(self):
+        return self.data
+
+    def __set__(self, obj):
+        self.data = torch.from_numpy(obj)
+
+    def __setitem__(self, indices, signal_data):
+        i, j = indices
+        self.data[i, j, :] = torch.from_numpy(np.asarray(signal_data))
+
+    def __getitem__(self, indices):
+        i, j = indices
+        return self.data[i, j, :]
+
+    def __iter__(self):
+        self.n = 0
+        return self
+
+    def __next__(self):
+        if self.n < self.end:
+            signals = self.data[self.n, :, :]
+            self.n += 1
+            return signals
+        else:
+            raise StopIteration
+
 class Sequence(nn.Module):
     """
     Model can learn repeating patterns from provided sequential data.

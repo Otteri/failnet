@@ -6,7 +6,7 @@ import pulsegen
 import config as cfg
 from pathlib import Path
 from visualization import plot
-from model import Model, Sequence, Channel
+from model import Model, Sequence, Channel, Batch
 from detectors import compareSingleValue
 
 # Brief:
@@ -66,11 +66,13 @@ def getDataBatch(env) -> (torch.tensor, torch.tensor):
         target_data: predictions made by the model, should match to this.
     """
     data = env.recordRotations(rotations=cfg.repetitions, viz=args.show_input)
-
-    # Shift datavectors. If input: x[k], then target: x[k+n]
-    n = cfg.predict_n
-    input_data = torch.from_numpy(data[..., :-n])
-    target_data = torch.from_numpy(data[..., n:])
+    input_data = Batch(cfg.repetitions, 1, cfg.signal_length-1)
+    target_data = Batch(cfg.repetitions, 1, cfg.signal_length-1)
+    for i in range(0, cfg.repetitions):
+        signal = env.recordRotation(viz=args.show_input)
+        n = cfg.predict_n
+        input_data[i, Channel.SIG1] = signal[:-n]
+        target_data[i, Channel.SIG1] = signal[n:]
     return input_data, target_data
 
 def main(args):
@@ -94,23 +96,23 @@ def main(args):
         # 1) Get data
         data["train_input"], data["train_target"] = getDataBatch(env) # Use different data for \
         data["test_input"], data["test_target"] = getDataBatch(env)   # training and testing...
-        unfiltered_test_input = data["test_input"].clone() # for visualization
+        unfiltered_test_input = data["test_input"].data.clone() # for visualization
 
         # 2) Preprocess data: filter it
         for batch_name, batch_data in data.items():
             for batch in batch_data:
-                signal = batch[Channel.SIG1, :]
-                batch[Channel.SIG1, :] = filterSignal(signal)
+                filtered_signal = filterSignal(batch[Channel.SIG1], n=5)
+                batch[Channel.SIG1] = filtered_signal
 
         # 3) Train the model with collected data
-        model.train(data["train_input"], data["train_target"])
+        model.train(data["train_input"].data, data["train_target"].data)
 
         # 4) Check how the model is performing
-        y = model.predict(data["test_input"], data["test_target"])
+        y = model.predict(data["test_input"].data, data["test_target"].data)
 
         # 5) Visualize performance
         if args.make_plots:
-            plot(unfiltered_test_input, data["test_input"], y[:, Channel.SIG1, :], i, args.invert)
+            plot(unfiltered_test_input, data["test_input"].data, y[:, Channel.SIG1, :], i)
 
     # Save outcome
     model.save_model("failnet.pt")
