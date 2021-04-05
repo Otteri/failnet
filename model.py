@@ -20,13 +20,11 @@ class Batch(object):
     Shape [B, S, L]
     Data is stored as a torch tensor, so model can use data directly.
     """
-    def __init__(self, b, s, l): # Use config to set these
+    def __init__(self, b=0, s=0, l=0): # Use config to set these
         self.data = torch.zeros(b, s, l, dtype=torch.float64)
         self.n = 0
         self.end = b # size for 1st dim
         self.shape = self.data.shape
-
-        self.consider_axis = 0
 
     def __len__(self):
         return self.end
@@ -198,17 +196,17 @@ class Model(object):
         Predicts values in sequence. Does not update NN-weights.
 
         Args:
-            test_input (array): input data for NN.
-            test_target (array): values that should be obtained.
+            test_input (Batch): input data for NN.
+            test_target (Batch): values that should be obtained.
 
         Returns:
-            array: predictions. What NN thinks the values should be.
+            np.array: predictions. What NN thinks the values should be.
         """
         with torch.no_grad(): # Do not update network -> reduced memory usage
-            out, loss = self._computeLoss(test_input.to(self.device), test_target.to(self.device))
+            out, loss = self._computeLoss(test_input.data.to(self.device), test_target.data.to(self.device))
             if verbose:
                 print("prediction loss:", loss.item())
-            out = self._forwardShift(out, test_input) # Combine angle and signal again; use original input data
+            out = self._forwardShift(out, test_input.data)
             y = out.cpu().detach().numpy()
         return y # [:, 0] # return the 'new' prediction value
 
@@ -218,12 +216,12 @@ class Model(object):
         LBFGS optimizer requires closure.
         
         Args:
-            train_input (array): input data for NN.
-            train_target (array): values that NN should obtain.
+            train_input (Batch): input data for NN.
+            train_target (Batch): values that NN should obtain.
         """
         def closure():
             self.optimizer.zero_grad()
-            out, loss = self._computeLoss(train_input.to(self.device), train_target.to(self.device))
+            out, loss = self._computeLoss(train_input.data.to(self.device), train_target.data.to(self.device))
             if verbose:
                 print("loss:", loss.item())            
             loss.backward()

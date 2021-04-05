@@ -5,7 +5,7 @@ data_dir = "predictions/"  # Where generated data is saved to
 repetitions = 10           # How many times pattern is repeated during single period
 signal_length = 501        # Data signal length (number of samples)
 step_size = 6.2832 / signal_length  # Sampling step. (2PI / L, for one cycle).
-noise = 0.01               # Adds noise to training data. 0.01 = 1% of data max amplitude.
+noise = 0.08               # Adds noise to training data. 0.01 = 1% of data max amplitude.
 
 harmonics = {              # Defines signal shape.
     1 : 5.5,               # First harmonic order and its max amplitude.

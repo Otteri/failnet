@@ -9,6 +9,8 @@ from visualization import plot
 from model import Model, Sequence, Channel, Batch
 from detectors import compareSingleValue
 
+from copy import deepcopy
+
 # Brief:
 # The model tries to learn provided periodical signal from input data.
 # Learned signal pattern can be leveraged for doing something useful.
@@ -79,13 +81,6 @@ def main(args):
 
     env = gym.make("FourierSeries-v0", config_path="config.py")
 
-    data = {
-        "train_input"  : [],
-        "train_target" : [],
-        "test_input"   : [],
-        "test_target"  : []
-    }
-
     # Create a new model
     model = Model(training=True, device=cfg.device)
 
@@ -94,25 +89,25 @@ def main(args):
         print("STEP:", i)
 
         # 1) Get data
-        data["train_input"], data["train_target"] = getDataBatch(env) # Use different data for \
-        data["test_input"], data["test_target"] = getDataBatch(env)   # training and testing...
-        unfiltered_test_input = data["test_input"].data.clone() # for visualization
+        train_input, train_target = getDataBatch(env)   # Use different data for \
+        test_input, test_target = getDataBatch(env)     # training and testing...
+        unfiltered_test_input = test_input.data.clone() # for visualization
 
-        # 2) Preprocess data: filter it
-        for batch_name, batch_data in data.items():
-            for batch in batch_data:
-                filtered_signal = filterSignal(batch[Channel.SIG1], n=5)
-                batch[Channel.SIG1] = filtered_signal
+        # 2) Preprocess all data: filter signal in first channel
+        for data in [train_input, train_target, test_input, test_target]:
+            for batch in data:
+                signal = batch[Channel.SIG1]
+                batch[Channel.SIG1] = filterSignal(signal, n=10)
 
         # 3) Train the model with collected data
-        model.train(data["train_input"].data, data["train_target"].data)
+        model.train(train_input, train_target)
 
         # 4) Check how the model is performing
-        y = model.predict(data["test_input"].data, data["test_target"].data)
+        y = model.predict(test_input, test_target)
 
         # 5) Visualize performance
         if args.make_plots:
-            plot(unfiltered_test_input, data["test_input"].data, y[:, Channel.SIG1, :], i)
+            plot(unfiltered_test_input, test_input.data, y[:, Channel.SIG1, :], i)
 
     # Save outcome
     model.save_model("failnet.pt")
