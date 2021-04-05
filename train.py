@@ -70,12 +70,11 @@ def get_data_batch(env) -> (torch.tensor, torch.tensor):
         input_data: training input data.
         target_data: predictions made by the model, should match to this.
     """
-    data = env.recordRotations(rotations=cfg.repetitions, viz=args.show_input)
-    input_data = Batch(cfg.repetitions, 1, cfg.signal_length-1)
-    target_data = Batch(cfg.repetitions, 1, cfg.signal_length-1)
+    n = cfg.predict_n
+    input_data = Batch(cfg.repetitions, 1, cfg.signal_length-n)
+    target_data = Batch(cfg.repetitions, 1, cfg.signal_length-n)
     for i in range(0, cfg.repetitions):
         signal = env.recordRotation(viz=args.show_input)
-        n = cfg.predict_n
         input_data[i, Channel.SIG1] = signal[:-n]
         target_data[i, Channel.SIG1] = signal[n:]
     return input_data, target_data
