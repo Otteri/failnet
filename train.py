@@ -4,12 +4,16 @@ import numpy as np
 import gym
 import pulsegen
 import config as cfg
+from enum import IntEnum
 from pathlib import Path
-from visualization import plot
-from model import Model, Sequence, Channel, Batch
+from visualization import *
+from model import Model, Batch
 from detectors import compareSingleValue
 
-from copy import deepcopy
+# This enum allows to reference feature vectors in an abstract manner.
+class Channel(IntEnum):
+    SIG1 = 0 # First measurement channel.
+
 
 # Brief:
 # The model tries to learn provided periodical signal from input data.
@@ -77,6 +81,14 @@ def getDataBatch(env) -> (torch.tensor, torch.tensor):
         target_data[i, Channel.SIG1] = signal[n:]
     return input_data, target_data
 
+def createPlot(iteration, signal1, signal2, signal3):
+    init_plot()
+    draw_signal(signal1[0, Channel.SIG1], linestyle='-', color='b', label='input')
+    draw_signal(signal2[0, Channel.SIG1], linestyle='--', color='r', label='filtered input')
+    draw_signal(signal3[0, Channel.SIG1, :], linestyle='-', color='g', label='learning outcome')
+    plt.legend()
+    plt.savefig(f"predictions/prediction_{iteration+1}.svg")
+
 def main(args):
 
     env = gym.make("FourierSeries-v0", config_path="config.py")
@@ -97,7 +109,7 @@ def main(args):
         for data in [train_input, train_target, test_input, test_target]:
             for batch in data:
                 signal = batch[Channel.SIG1]
-                batch[Channel.SIG1] = filterSignal(signal, n=10)
+                batch[Channel.SIG1] = filterSignal(signal, n=3)
 
         # 3) Train the model with collected data
         model.train(train_input, train_target)
@@ -107,7 +119,7 @@ def main(args):
 
         # 5) Visualize performance
         if args.make_plots:
-            plot(unfiltered_test_input, test_input.data, y[:, Channel.SIG1, :], i)
+            createPlot(i, unfiltered_test_input, test_input, y)
 
     # Save outcome
     model.save_model("failnet.pt")

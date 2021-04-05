@@ -4,12 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import config as cfg
-from enum import IntEnum
 from math import floor
-
-# This enum allows to reference feature vectors in an abstract manner.
-class Channel(IntEnum): # Channels in data block
-    SIG1 = 0 # First measurement channel.
 
 # The aim of this datastructure is to recude user errors by
 # defining clear ways to handle data while also doing checks.
@@ -78,9 +73,9 @@ class Sequence(nn.Module):
         predict_n (int): Sets how much in future model should predict.
         Defaults to 1, which means that does not try to predict future.
     """
-    def __init__(self, signal_length=500, hidden=32, predict_n=1) -> None:
+    def __init__(self, channels=1, signal_length=500, hidden=32, predict_n=1) -> None:
         super(Sequence, self).__init__()
-        channels  = len(Channel) # Number of data channels
+        channels  = channels # Number of data channels (in batches)
         kernel1   = 5  # Conv kernel size
         stride1   = 3  # Conv stride size
         padding1  = 2  # Conv padding size
@@ -135,7 +130,7 @@ class Model(object):
     def __init__(self, training=True, device="cpu", load_path=None) -> None:
         self.training = training
         self.device = device
-        self.seq = Sequence(cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
+        self.seq = Sequence(1, cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
         self.criterion = nn.MSELoss().to(device)
         # Use LBFGS as optimizer since we can load full data batch to train
         # LBFGS is very memory intensive, so use history and max iter to adjust memory usage!
@@ -166,7 +161,7 @@ class Model(object):
         """
         N = cfg.predict_n - 1 # indices start from zero
         tensor = old_tensor.clone() # keep graph
-        tensor[:, Channel.SIG1, :] = new_tensor[:, N:]
+        tensor[:, 0, :] = new_tensor[:, N:]
         return tensor
 
     def _computeLoss(self, input_data, target_data) -> (torch.tensor, torch.tensor):
@@ -187,7 +182,7 @@ class Model(object):
 
         y = self.seq(input_data)
         shift = target_data.size(2)
-        target_signal = target_data[:, Channel.SIG1, :shift]
+        target_signal = target_data[:, 0, :shift]
         loss = self.criterion(y[:, :shift], target_signal) # Easier to compare input
         return y, loss
 
