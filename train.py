@@ -4,16 +4,15 @@ import numpy as np
 import gym
 import pulsegen
 import config as cfg
+import matplotlib.pyplot as plt
 from enum import IntEnum
 from pathlib import Path
-from visualization import *
+from visualization import draw_signal, init_plot
 from model import Model, Batch
-from detectors import compareSingleValue
 
 # This enum allows to reference feature vectors in an abstract manner.
 class Channel(IntEnum):
     SIG1 = 0 # First measurement channel.
-
 
 # Brief:
 # The model tries to learn provided periodical signal from input data.
@@ -82,10 +81,17 @@ def getDataBatch(env) -> (torch.tensor, torch.tensor):
     return input_data, target_data
 
 def createPlot(iteration, signal1, signal2, signal3):
+    """
+    A helper function for creating plots.
+
+    Args:
+        iteration (int): Used for naming save file.
+        signal 1,2,3 (3d array): Data for plotting.
+    """
     init_plot()
-    draw_signal(signal1[0, Channel.SIG1], linestyle='-', color='b', label='input')
+    draw_signal(signal1[0, Channel.SIG1], linestyle='-',  color='b', label='input')
     draw_signal(signal2[0, Channel.SIG1], linestyle='--', color='r', label='filtered input')
-    draw_signal(signal3[0, Channel.SIG1, :], linestyle='-', color='g', label='learning outcome')
+    draw_signal(signal3[0, Channel.SIG1], linestyle='-',  color='g', label='learning outcome')
     plt.legend()
     plt.savefig(f"predictions/prediction_{iteration+1}.svg")
 
@@ -94,7 +100,16 @@ def main(args):
     env = gym.make("FourierSeries-v0", config_path="config.py")
 
     # Create a new model
-    model = Model(training=True, device=cfg.device)
+    model = Model(
+        training      = True,
+        device        = cfg.device,
+        signal_length = cfg.signal_length,
+        hidden        = cfg.hidden,
+        predict_n     = cfg.predict_n,
+        lr            = cfg.learning_rate,
+        max_iter      = cfg.max_iter,
+        history_size  = cfg.history_size
+    )
 
     # Start training
     for i in range(args.steps):
@@ -105,7 +120,7 @@ def main(args):
         test_input, test_target = getDataBatch(env)     # training and testing...
         unfiltered_test_input = test_input.data.clone() # for visualization
 
-        # 2) Preprocess all data: filter signal in first channel
+        # 2) Preprocess all data: filter first channel signal
         for data in [train_input, train_target, test_input, test_target]:
             for batch in data:
                 signal = batch[Channel.SIG1]

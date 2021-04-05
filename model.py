@@ -3,17 +3,25 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import config as cfg
 from math import floor
 
-# The aim of this datastructure is to recude user errors by
-# defining clear ways to handle data while also doing checks.
-# Data is stored as a 3d array: [B, S, L], where B is batch
-# S is recorded signal and L is recorded data value index.
 class Batch(object):
     """
-    Shape [B, S, L]
-    Data is stored as a torch tensor, so model can use data directly.
+    The aim of this datastructure is to recude user errors by defining clear
+    ways to handle data. Some correctness asserts can be done as well.
+    Internally, data is stored to 3d tensor: [B, S, L], where B is batch
+    S is signal channel and L is data value index. Because data is converted
+    to tensor, the NN model can use class data directly for computation.
+
+    Default zero initialization values allow premature initialization and
+    make assigning possible. Notice, that none of the b,s,l values should
+    stay zero when storing real data. You should always have at least one
+    batch with certain length signal(s).
+    
+    Args:
+        b (int) : number of batches.
+        s (int) : number of channels (different signals)
+        l (int) : signal length.
     """
     def __init__(self, b=0, s=0, l=0): # Use config to set these
         self.data = torch.zeros(b, s, l, dtype=torch.float64)
@@ -127,15 +135,17 @@ class Model(object):
         device (str): device used for training and predicting. cpu / cuda.
         load_path (str): Path to a model save file, which will be loaded.
     """
-    def __init__(self, training=True, device="cpu", load_path=None) -> None:
+    def __init__(self, training=True, device="cpu", load_path=None, signal_length=500, hidden=32, predict_n=1, lr=0.10, max_iter=20, history_size=80) -> None:
         self.training = training
         self.device = device
-        self.seq = Sequence(1, cfg.signal_length, cfg.hidden, cfg.predict_n).double().to(device)
+        self.seq = Sequence(1, signal_length, hidden, predict_n).double().to(device)
         self.criterion = nn.MSELoss().to(device)
         # Use LBFGS as optimizer since we can load full data batch to train
         # LBFGS is very memory intensive, so use history and max iter to adjust memory usage!
-        self.optimizer = optim.LBFGS(self.seq.parameters(), lr=cfg.learning_rate,
-            max_iter=cfg.max_iter, history_size=cfg.history_size)
+        self.optimizer = optim.LBFGS(self.seq.parameters(), lr=lr,
+            max_iter=max_iter, history_size=history_size)
+
+        self.predict_n = predict_n
         
         if load_path:
             checkpoint = torch.load(load_path)
@@ -159,7 +169,7 @@ class Model(object):
         Returns:
             [tensor]: shifted data tensor.
         """
-        N = cfg.predict_n - 1 # indices start from zero
+        N = self.predict_n - 1 # indices start from zero
         tensor = old_tensor.clone() # keep graph
         tensor[:, 0, :] = new_tensor[:, N:]
         return tensor
