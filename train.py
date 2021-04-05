@@ -20,7 +20,7 @@ class Channel(IntEnum):
 # Expects data to have form: [B, S, L], where B is batch size,
 # S is number of signals and L is the signal length.
 
-def parseArgs() -> argparse:
+def parse_args() -> argparse:
     """
     Parses provided comman line arguments.
 
@@ -34,7 +34,7 @@ def parseArgs() -> argparse:
     args = parser.parse_args()
     return args
 
-def filterSignal(signal, n=3) -> torch.tensor:
+def filter_signal(signal, n=3) -> torch.tensor:
     """
     Preprocesses input data by average filtering filtering it.
     This reduces noise levels, which can boost learning.
@@ -57,7 +57,7 @@ def filterSignal(signal, n=3) -> torch.tensor:
     filtered_signal = moving_average(padded_signal, n)
     return filtered_signal
 
-def getDataBatch(env) -> (torch.tensor, torch.tensor):
+def get_data_batch(env) -> (torch.tensor, torch.tensor):
     """
     Collects data which can be used for training.
     Data is a 3d array: [B, S, L], where B is batch
@@ -80,7 +80,7 @@ def getDataBatch(env) -> (torch.tensor, torch.tensor):
         target_data[i, Channel.SIG1] = signal[n:]
     return input_data, target_data
 
-def createPlot(iteration, signal1, signal2, signal3):
+def create_plot(iteration, signal1, signal2, signal3):
     """
     A helper function for creating plots.
 
@@ -116,15 +116,15 @@ def main(args):
         print("STEP:", i)
 
         # 1) Get data
-        train_input, train_target = getDataBatch(env)   # Use different data for \
-        test_input, test_target = getDataBatch(env)     # training and testing...
+        train_input, train_target = get_data_batch(env)   # Use different data for \
+        test_input, test_target = get_data_batch(env)     # training and testing...
         unfiltered_test_input = test_input.data.clone() # for visualization
 
         # 2) Preprocess all data: filter first channel signal
         for data in [train_input, train_target, test_input, test_target]:
             for batch in data:
                 signal = batch[Channel.SIG1]
-                batch[Channel.SIG1] = filterSignal(signal, n=3)
+                batch[Channel.SIG1] = filter_signal(signal, n=3)
 
         # 3) Train the model with collected data
         model.train(train_input, train_target)
@@ -134,7 +134,7 @@ def main(args):
 
         # 5) Visualize performance
         if args.make_plots:
-            createPlot(i, unfiltered_test_input, test_input, y)
+            create_plot(i, unfiltered_test_input, test_input, y)
 
     # Save outcome
     model.save_model("failnet.pt")
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     Path(cfg.data_dir).mkdir(exist_ok=True)
 
     # Read command line arguments
-    args = parseArgs()
+    args = parse_args()
 
     # Run training loop
     main(args)

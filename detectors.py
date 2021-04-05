@@ -1,6 +1,6 @@
 # Different failure detection implementations for various cases
 
-def compareSingleValue(actual, pred, epsilon) -> bool:
+def compare_single_value(actual, pred, epsilon) -> bool:
     """
     Compares predictions and measurement values from a single scan
 
