@@ -12,11 +12,14 @@ import matplotlib.pyplot as plt
 matplotlib.use('TkAgg')
 
 # Some test data that the model has been trying to learn
+env = gym.make("PeriodicalSignal-v0", config_path="config.py")
 n = cfg.predict_n
-env = gym.make("FourierSeries-v0", config_path="config.py")
-data = env.recordRotations(rotations=1, viz=False)
-input_data = data[..., :-n]
-target_data = data[..., n:]
+input_data = np.zeros((1, 1, cfg.signal_length-n))
+target_data = np.zeros((1, 1, cfg.signal_length-n))
+for i in range(0, 1):
+    signal = env.record_rotation()
+    input_data[i, 0] = signal[:-n]
+    target_data[i, 0] = signal[n:]
 
 # Create NN
 ort_session = ort.InferenceSession('failnet.onnx')

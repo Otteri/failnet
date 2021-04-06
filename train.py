@@ -74,7 +74,7 @@ def get_data_batch(env) -> (torch.tensor, torch.tensor):
     input_data = Batch(cfg.repetitions, 1, cfg.signal_length-n)
     target_data = Batch(cfg.repetitions, 1, cfg.signal_length-n)
     for i in range(0, cfg.repetitions):
-        signal = env.recordRotation(viz=args.show_input)
+        signal = env.record_rotation(viz=args.show_input)
         input_data[i, Channel.SIG1] = signal[:-n]
         target_data[i, Channel.SIG1] = signal[n:]
     return input_data, target_data
@@ -96,7 +96,7 @@ def create_plot(iteration, signal1, signal2, signal3):
 
 def main(args):
 
-    env = gym.make("FourierSeries-v0", config_path="config.py")
+    env = gym.make("PeriodicalSignal-v0", config_path="config.py")
 
     # Create a new model
     model = Model(

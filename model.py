@@ -13,7 +13,9 @@ class Batch(object):
     S is signal channel and L is data value index. Because data is converted
     to tensor, the NN model can use class data directly for computation.
     It is beneficial to keep data structure very simple, so this class
-    is not a requirement for running the model (ONNX).
+    is not a requirement for running the model (ONNX). Essentially, you
+    could just call: np.zeros((b, s, l)) and manage indices and access
+    to array yourself, but this is more error prone.
 
     Default zero initialization values allow premature initialization and
     make assigning possible. Notice, that none of the b,s,l values should
