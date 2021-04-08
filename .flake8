@@ -1,0 +1,38 @@
+[flake8]
+exclude = .git,env,__pycache__,.eggs,gym-envs,pulsegen
+extend-ignore =
+    E741
+    E501
+    D107
+    D105
+    E203
+    E266
+    W503
+    F403
+    F541
+    F401
+    E251
+    E221
+    E261
+    E302
+    E302
+    F401
+
+    # whitespaces before ']' and after '['
+    E201
+    E202
+
+    E301
+    E124   
+    E128
+    E305
+    W291
+    W293
+    E128
+    E711
+    E231
+
+select = C,E,F,W,B,B950,RST,PAI,BLK
+
+max-complexity=10
+max-line-length=127
