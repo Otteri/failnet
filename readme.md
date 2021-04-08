@@ -25,3 +25,10 @@ Pytorch model can be converted to ONNX model with `pytorch2onnx.py` script. ONNX
 ## Simulation environment
 The detector can be tested and developed using simulation environment called
 [pulsegen](https://github.com/Otteri/gym-envs). Pulsegen was used in the run examlpe. Another option is to feed recorded data for the model and use this for training.
+
+## Testing & Linting
+It is assumed that you are in the root of the repository and you have installed pytest and flake8. Then you can call:
+```bash
+pytest tests/ # run tests
+flake8 .      # run linter
+```
