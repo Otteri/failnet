@@ -1,14 +1,14 @@
 # FailNet - Simple and Robust Failure Detector
 ![master badge](https://github.com/Otteri/failnet/actions/workflows/python-app.yml/badge.svg)
 
-FailNet is a failure detector that can be easily integrated to any system. It works in a black-box manner, which allows it to be used easily with anykind of sequential data. Therefore, it doesn't matter much what kind of system you have. The detector aims to be generic, simple, lightweight, robust and reliable. All these properties can be achieved with a lightweight convolutional neural network which is trained to predict patterns and inform user if there is too great difference between predictions and real values.
+FailNet is a robust failure detector that can be easily integrated to any system that produces sequential data. The detector is based on deep learning. It learns typical behaviour of the system and then this information is leveraged for detecting possible issues in the system. The system does not need to be modelled, so the detector is very generic. 
 
 ## Installation
 It is recommended to first create a virtual environment, then install requirements:
 ```bash
 $ pip install -r requirements.txt
 ```
-This installs all required python packages and data generation environemnt. (Installation has been found to work with python 3.8.5 at least. Shold work with other versions as well).
+This installs all required python packages and data generation environemnt. (Installation has been found to work with python 3.8.5 at least. Hopefully other versions work as well).
 
 ## Configuration
 Model properties can be configured using `config.py`. Configuration file also allows to adjust generated data properties when using `pulsegen` environment.
@@ -28,8 +28,8 @@ The detector can be tested and developed using simulation environment called
 [pulsegen](https://github.com/Otteri/gym-envs). Pulsegen was used in the run examlpe. Another option is to feed recorded data for the model and use this for training.
 
 ## Testing & Linting
-It is assumed that you are in the root of the repository and you have installed pytest and flake8. Then you can call:
+It is assumed that you are in the root of the repository and you have installed [pytest](https://docs.pytest.org/en/stable/) and [flake8](https://pypi.org/project/flake8/) (these are not part of requirements.txt). Then, you can call:
 ```bash
-pytest tests/ # run tests
-flake8 .      # run linter
+$ pytest tests/ # run tests
+$ flake8 .      # run linter
 ```

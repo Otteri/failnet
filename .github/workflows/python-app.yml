@@ -34,3 +34,8 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+    
+    - name: Test ONNX generation
+      run: |
+        python failnet/train.py --config_path "tests/config.py"
+        python failnet/pytorch2onnx.py

@@ -31,6 +31,7 @@ def parse_args() -> argparse:
     parser.add_argument("--steps", type=int, default=10, help="steps to run")
     parser.add_argument("--show_input", default=False, action="store_true", help="Visualizes input data used for training")
     parser.add_argument("--make_plots", default=False, action="store_true", help="Visualizes learning process during training")
+    parser.add_argument("--config_path", type=str, default="config.py", help="Path to a custom config")
     args = parser.parse_args()
     return args
 
@@ -96,7 +97,7 @@ def create_plot(iteration, signal1, signal2, signal3):
 
 def main(args):
 
-    env = gym.make("PeriodicalSignal-v0", config_path="config.py")
+    env = gym.make("PeriodicalSignal-v0", config_path=args.config_path)
 
     # Create a new model
     model = Model(
@@ -145,6 +146,12 @@ if __name__ == "__main__":
 
     # Read command line arguments
     args = parse_args()
+
+    if args.config_path != "config.py":
+        import sys
+        print(f"[INFO] Loading config '{args.config_path}'")
+        sys.path.append(args.config_path)
+        import config as cfg  # override the default
 
     # Run training loop
     main(args)
