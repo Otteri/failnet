@@ -1,5 +1,5 @@
 [flake8]
-exclude = .git,env,__pycache__,.eggs,gym-envs,pulsegen
+exclude = .git,env,__pycache__,.eggs,gym-envs,pulsegen,tests
 extend-ignore =
     E741
     E501

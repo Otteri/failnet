@@ -28,6 +28,11 @@ class Batch(object):
         l (int) : signal length.
     """
     def __init__(self, b=0, s=0, l=0): # Use config to set these
+
+        assert b >= 0, "Batch number cannot be negative"
+        assert s >= 0, "Number of signals cannot be negative"
+        assert l >= 0, "Signal length cannot be negative"
+
         self.data = torch.zeros(b, s, l, dtype=torch.float64)
         self.n = 0
         self.end = b # size for 1st dim
