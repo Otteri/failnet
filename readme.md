@@ -1,4 +1,5 @@
 # FailNet - Simple and Robust Failure Detector
+![master badge](https://github.com/Otteri/failnet/actions/workflows/python-app.yml/badge.svg)
 
 FailNet is a failure detector that can be easily integrated to any system. It works in a black-box manner, which allows it to be used easily with anykind of sequential data. Therefore, it doesn't matter much what kind of system you have. The detector aims to be generic, simple, lightweight, robust and reliable. All these properties can be achieved with a lightweight convolutional neural network which is trained to predict patterns and inform user if there is too great difference between predictions and real values.
 
