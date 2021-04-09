@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('Agg') # Works with console only setup (does not render plot)
 
 def init_plot():
     # Set some good default settings
