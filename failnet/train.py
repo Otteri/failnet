@@ -4,6 +4,7 @@ import numpy as np
 import gym
 import pulsegen
 import config as cfg
+import matplotlib
 import matplotlib.pyplot as plt
 from enum import IntEnum
 from pathlib import Path
@@ -31,6 +32,7 @@ def parse_args() -> argparse:
     parser.add_argument("--steps", type=int, default=10, help="steps to run")
     parser.add_argument("--show_input", default=False, action="store_true", help="Visualizes input data used for training")
     parser.add_argument("--make_plots", default=False, action="store_true", help="Visualizes learning process during training")
+    parser.add_argument("--console_only", default=False, action="store_true", help="Use only console window")
     parser.add_argument("--config_path", type=str, default="config.py", help="Path to a custom config")
     args = parser.parse_args()
     return args
@@ -147,11 +149,18 @@ if __name__ == "__main__":
     # Read command line arguments
     args = parse_args()
 
+    # Check if user wants to load custom config
     if args.config_path != "config.py":
         import sys
         print(f"[INFO] Loading config '{args.config_path}'")
         sys.path.append(args.config_path)
         import config as cfg  # override the default
+
+    if args.console_only:
+        # Use different matplotlib backend. This allows us to save plots
+        # without them being rendered. Without GUI, the process just gets 
+        # stuck if we try to visualize without this arg being set to true.
+        matplotlib.use('Agg')
 
     # Run training loop
     main(args)

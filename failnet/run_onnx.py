@@ -9,7 +9,6 @@ import pulsegen
 # Plotting
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TkAgg')
 
 # Some test data that the model has been trying to learn
 env = gym.make("PeriodicalSignal-v0", config_path="config.py")
