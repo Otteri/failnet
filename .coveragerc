@@ -1,0 +1,3 @@
+[run]
+source = failnet
+omit = failnet/config.py

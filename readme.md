@@ -1,5 +1,6 @@
 # FailNet - Simple and Robust Failure Detector
 ![master badge](https://github.com/Otteri/failnet/actions/workflows/python-app.yml/badge.svg)
+[![codecov](https://codecov.io/gh/Otteri/failnet/branch/master/graph/badge.svg?token=0V075MBYTZ)](https://codecov.io/gh/Otteri/failnet)
 
 FailNet is a robust failure detector that can be easily integrated to any system that produces sequential data. The detector is based on deep learning. It learns typical behaviour of the system and then this information is leveraged for detecting possible issues in the system. The system does not need to be modelled, so the detector is very generic. 
 
@@ -28,10 +29,11 @@ The detector can be tested and developed using simulation environment called
 [pulsegen](https://github.com/Otteri/gym-envs). Pulsegen was used in the run examlpe. Another option is to feed recorded data for the model and use this for training.
 
 ## Testing & Linting
-It is assumed that you are in the root of the repository and you have installed [pytest](https://docs.pytest.org/en/stable/) and [flake8](https://pypi.org/project/flake8/) (these are not part of requirements.txt). Then, you can call:
+It is assumed that you are in the root of the repository and you have installed [pytest](https://docs.pytest.org/en/stable/), [flake8](https://pypi.org/project/flake8/) and [coverage](https://pypi.org/project/coverage/) (these are not part of requirements.txt. You can install these with pip). Then, you can call:
 ```bash
-$ pytest tests/ # run tests
-$ flake8 .      # run linter
+$ python -m pytest tests/ # run tests
+$ flake8 . # run linter
+$ coverage run -m pytest tests/ # run test coverage
 ```
 
 # Details
