@@ -65,6 +65,10 @@ def get_data_batch(env) -> (torch.tensor, torch.tensor):
     Collects data which can be used for training.
     Data is a 3d array: [B, S, L], where B is batch
     S is recorded signal and L is recorded data value index.
+    Calculation signal length is signal_length - predict_n, i.e.
+    intersection between input and target batches:
+    input:  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    target:    [2, 3, 4, 5, 6, 7, 8, 9, 10, 11] -> size 9
 
     Args:
         env (pulsegen): Gym envinment used for data generation.
