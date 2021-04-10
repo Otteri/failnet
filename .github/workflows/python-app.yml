@@ -11,9 +11,9 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    env:
+      CODECOV_TOKEN: 5cdbe6d0-ae45-4c36-935d-c0ecdcce7c44
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
@@ -38,7 +38,8 @@ jobs:
       run : |
         coverage run -m pytest tests/
         coverage report
-    
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v1
     - name: Test ONNX generation
       run: |
         python failnet/train.py --config_path "tests/config.py"

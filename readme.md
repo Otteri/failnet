@@ -1,5 +1,6 @@
 # FailNet - Simple and Robust Failure Detector
 ![master badge](https://github.com/Otteri/failnet/actions/workflows/python-app.yml/badge.svg)
+[![codecov](https://codecov.io/gh/Otteri/failnet/branch/master/graph/badge.svg?token=0V075MBYTZ)](https://codecov.io/gh/Otteri/failnet)
 
 FailNet is a robust failure detector that can be easily integrated to any system that produces sequential data. The detector is based on deep learning. It learns typical behaviour of the system and then this information is leveraged for detecting possible issues in the system. The system does not need to be modelled, so the detector is very generic. 
 
