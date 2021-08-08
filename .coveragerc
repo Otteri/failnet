@@ -1,3 +1,7 @@
 [run]
 source = failnet
-omit = failnet/config.py
+omit = 
+        failnet/config.py
+        # CI-job checks these:
+        failnet/pytorch2onnx.py
+        failnet/run_onnx.py

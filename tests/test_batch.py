@@ -28,3 +28,9 @@ def test_batch_assign():
     assert batch1.shape == (0, 0, 0)
     batch1 = batch2
     assert batch1.shape == (9, 99, 999)
+
+def test_batch_iter():
+    batches = Batch(10, 2, 10)
+    for i, batch in enumerate(batches):
+        assert batch.shape == (2, 10)
+    assert i+1 == 10 # Did we go through 10 batches?
