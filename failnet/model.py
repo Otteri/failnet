@@ -155,6 +155,7 @@ class Model(object):
             max_iter=max_iter, history_size=history_size)
 
         self.predict_n = predict_n
+        self.signal_length = signal_length
         
         if load_path:
             checkpoint = torch.load(load_path)
@@ -167,13 +168,13 @@ class Model(object):
             self.seq.eval()
             print("[INFO] evaluation mode has been enabled.")
 
-    def _forwardShift(self, new_tensor, old_tensor) -> torch.tensor:
+    def _forward_shift(self, new_tensor, old_tensor) -> torch.tensor:
         """
         Forwards data tensor one step by shifting data.
 
         Args:
-            new_tensor (tensor): tensor obtained from NN.
-            old_tensor (tensor): original data tensor.
+            new_tensor (tensor 2d): tensor obtained from NN.
+            old_tensor (tensor 3d): original data tensor.
 
         Returns:
             [tensor]: shifted data tensor.
@@ -183,50 +184,66 @@ class Model(object):
         tensor[:, 0, :] = new_tensor[:, N:]
         return tensor
 
-    def _computeLoss(self, input_data, target_data) -> (torch.tensor, torch.tensor):
+    def _get_prediction(self, input_data):
         """
-        Passes data through NN and then computes loss.
-        When predicting outside of training, target_data can be same as input_data.
+        Forwards data through neural network in order to obtain a
+        prediction. Then output is packed to a 3D Batch.
 
         Args:
-            input_data (tensor): data used for learning
-            target_data (tensor): data values that NN should obtain
+            input_data (Batch): data for the NN.
 
         Returns:
-           tensor: predictions. What NN thinks the values should be.
-           tensor: loss value, which indicates NN performance.
+            out (tensor): model prediction
         """
-        assert input_data.size(2) > 0, "No input data provided. It is required!"
-        assert input_data.shape == target_data.shape, "Target data size must match with input data."
-
         y = self.seq(input_data)
-        shift = target_data.size(2)
-        target_signal = target_data[:, 0, :shift]
-        loss = self.criterion(y[:, :shift], target_signal) # Easier to compare input
-        return y, loss
+        out = input_data.clone()
+        out[:, 0, :] = y[:, 0:] # 2d -> 3d tensor
+        return out
 
-    def predict(self, test_input, test_target, verbose=True) -> np.array:
+    def _compute_loss(self, prediction, target_data) -> (torch.tensor):
         """
-        Predicts values in sequence. Does not update NN-weights.
+        Computes loss between model prediction and target data batch.
+        Currently computes loss only using signal no. 0.
 
         Args:
-            test_input (Batch): input data for NN.
+            prediction (tensor 3d): model prediction (NN output)
+            target_data (tensor 3d): data values that NN should obtain
+
+        Returns:
+           tensor (double): loss value, which indicates NN performance.
+        """
+        n = self.signal_length - 1
+        assert prediction.size(2) >= n, "Input tensor signal < config signal length."
+        assert prediction.shape == target_data.shape, "Target data size must match with input data."
+
+        target = target_data[:, 0, :n]
+        loss = self.criterion(prediction[:, 0, :n], target)
+        return loss
+
+    def predict(self, test_input, test_target=None) -> np.array:
+        """
+        Predicts values in sequence. Does not update NN-weights.
+        test_target is optional. When given, we can compute loss
+        with test data, otherwise we simply just predict using model.
+
+        Args:
+            test_input (Batch): input data for the NN model.
             test_target (Batch): values that should be obtained.
 
         Returns:
             np.array: predictions. What NN thinks the values should be.
         """
         with torch.no_grad(): # Do not update network -> reduced memory usage
-            out, loss = self._computeLoss(test_input.data.to(self.device), test_target.data.to(self.device))
-            if verbose:
+            prediction = self._get_prediction(test_input.data.to(self.device))
+            if test_target:
+                loss = self._compute_loss(prediction, test_target.data.to(self.device))
                 print("prediction loss:", loss.item())
-            out = self._forwardShift(out, test_input.data)
-            y = out.cpu().detach().numpy()
-        return y # [:, 0] # return the 'new' prediction value
+
+        return prediction.cpu().detach().numpy()
 
     def train(self, train_input, train_target, verbose=True) -> None:
         """
-        Predicts values in sequence. Updates NN-weigths.
+        Predicts values in a sequence. Updates NN-weigths.
         LBFGS optimizer requires closure.
         
         Args:
@@ -235,7 +252,8 @@ class Model(object):
         """
         def closure():
             self.optimizer.zero_grad()
-            out, loss = self._computeLoss(train_input.data.to(self.device), train_target.data.to(self.device))
+            prediction = self._get_prediction(train_input.data.to(self.device))
+            loss = self._compute_loss(prediction, train_target.data.to(self.device))
             if verbose:
                 print("loss:", loss.item())            
             loss.backward()

@@ -1,6 +1,9 @@
 # Training data
 predictions/
 
+# Simulation environment
+gym-envs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
