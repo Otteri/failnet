@@ -94,11 +94,17 @@ def test_predict():
     assert prediction.shape == (1, 1, 99)
     assert prediction.dtype == np.float64
 
-def test_model_save():
-    save_filename = "./test_save.pt"
+def test_model_save_and_load(capfd):
+    # Test saving
+    model_filename = "./test_save.pt"
     model = Model(predict_n=1, signal_length=100, hidden=16)
-    model.save_model(save_filename)
-    assert path.isfile(save_filename) == True
-    remove(save_filename) 
+    model.save_model(model_filename)
+    assert path.isfile(model_filename) == True
+
+    # Test loading
+    model = Model(load_path=model_filename, predict_n=1, signal_length=100, hidden=16)
+    out, err = capfd.readouterr()
+    assert "[INFO] model has been loaded succesfully!" in out
+    remove(model_filename) # clean up
 
 # TODO: tests for multiple signal cases

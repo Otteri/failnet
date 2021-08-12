@@ -29,9 +29,9 @@ class Batch(object):
     """
     def __init__(self, b=0, s=0, l=0): # Use config to set these
 
-        assert b >= 0, "Batch number cannot be negative"
-        assert s >= 0, "Number of signals cannot be negative"
-        assert l >= 0, "Signal length cannot be negative"
+        assert b >= 0, "Batch number cannot be negative or zero"
+        assert s >= 0, "Number of signals cannot be negative or zero"
+        assert l >= 0, "Signal length cannot be negative or zero"
 
         self.data = torch.zeros(b, s, l, dtype=torch.float64)
         self.n = 0
@@ -40,12 +40,6 @@ class Batch(object):
 
     def __len__(self):
         return self.end
-
-    def __get__(self):
-        return self.data
-
-    def __set__(self, obj):
-        self.data = torch.from_numpy(obj)
 
     def __setitem__(self, indices, signal_data):
         i, j = indices

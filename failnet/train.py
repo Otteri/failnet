@@ -4,12 +4,14 @@ import numpy as np
 import gym
 import pulsegen
 import config as cfg
+
 import matplotlib
 import matplotlib.pyplot as plt
 from enum import IntEnum
 from pathlib import Path
 from visualization import draw_signal, init_plot
 from model import Model, Batch
+from filters import filter_signal
 
 # This enum allows to reference feature vectors in an abstract manner.
 class Channel(IntEnum):
@@ -36,29 +38,6 @@ def parse_args() -> argparse:
     parser.add_argument("--config_path", type=str, default="config.py", help="Path to a custom config")
     args = parser.parse_args()
     return args
-
-def filter_signal(signal, n=3) -> torch.tensor:
-    """
-    Preprocesses input data by average filtering filtering it.
-    This reduces noise levels, which can boost learning.
-    Padding can be added, so that data dimensions stay the same.
-
-    Args:
-        signal (1d array): Data to be processed.
-        n (int, optional): Moving average filter window size.
-
-    Returs:
-        filtered_signal: signal that has been filtered
-    """
-    # TODO: Unit test that shape stays same -- that padding works
-    def moving_average(a, n=3) :
-        ret = np.cumsum(a, dtype=float)
-        ret[n:] = ret[n:] - ret[:-n]
-        return ret[n - 1:] / n
-
-    padded_signal = torch.cat((signal[0:(n-1)], signal[:]))
-    filtered_signal = moving_average(padded_signal, n)
-    return filtered_signal
 
 def get_data_batch(env) -> (torch.tensor, torch.tensor):
     """
