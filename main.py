@@ -1,5 +1,6 @@
 import argparse
 import os
+import matplotlib
 from pathlib import Path
 from failnet.train import train
 

@@ -30,12 +30,15 @@ def get_data_batch(env, repetitions, signal_length, n, show_input=False) -> (tor
 
     Args:
         env (pulsegen): Gym envinment used for data generation.
+        repetitions (int): how many iterations will be recorded
+        signal_length (int): length for single iteration
+        n (int): prediction step size 
+        show_input (bool): Optional flag, requires matplotlib
 
     Returns:
         input_data: training input data.
         target_data: predictions made by the model, should match to this.
     """
-    #n = cfg.predict_n
     input_data = Batch(repetitions, 1, signal_length-n)
     target_data = Batch(repetitions, 1, signal_length-n)
     for i in range(0, repetitions):
@@ -83,7 +86,12 @@ def train(args, cfg):
 
         # 5) Visualize performance
         if args.make_plots:
-            create_plot(i, unfiltered_test_input, test_input, y, Channel.SIG1)
+            create_plot(
+                f"predictions/prediction_{i+1}.svg",
+                unfiltered_test_input[0, Channel.SIG1],
+                test_input[0, Channel.SIG1],
+                y[0, Channel.SIG1]
+            )
 
     # Save outcome
     model.save_model("failnet.pt")
