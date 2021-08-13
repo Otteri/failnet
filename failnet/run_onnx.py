@@ -10,33 +10,36 @@ import pulsegen
 import matplotlib
 import matplotlib.pyplot as plt
 
-# Some test data that the model has been trying to learn
-env = gym.make("PeriodicalSignal-v0", config_path="config.py")
-n = cfg.predict_n
-input_data = np.zeros((1, 1, cfg.signal_length-n))
-target_data = np.zeros((1, 1, cfg.signal_length-n))
-for i in range(0, 1):
-    signal = env.record_rotation()
-    input_data[i, 0] = signal[:-n]
-    target_data[i, 0] = signal[n:]
+def run_onnx():
+    # Some test data that the model has been trying to learn
+    env = gym.make("PeriodicalSignal-v0", config_path="config.py")
+    n = cfg.predict_n
+    input_data = np.zeros((1, 1, cfg.signal_length-n))
+    target_data = np.zeros((1, 1, cfg.signal_length-n))
+    for i in range(0, 1):
+        signal = env.record_rotation()
+        input_data[i, 0] = signal[:-n]
+        target_data[i, 0] = signal[n:]
 
-# Create NN
-ort_session = ort.InferenceSession('failnet.onnx')
+    # Create NN
+    ort_session = ort.InferenceSession('failnet.onnx')
 
-# Run through NN
-model_predictions = ort_session.run(None, {'input_batch': input_data})
+    # Run through NN
+    model_predictions = ort_session.run(None, {'input_batch': input_data})
 
-# Visualize result
-model_predictions = np.array(model_predictions) # convert to numpy
-prediction = model_predictions[0, 0]
-actual = target_data[0, 0, :]
+    # Visualize result
+    model_predictions = np.array(model_predictions) # convert to numpy
+    prediction = model_predictions[0, 0]
+    actual = target_data[0, 0, :]
 
-init_plot()
-draw_signal(prediction, color='r', label='prediction')
-draw_signal(actual, color='b', label='actual')
-plt.legend()
-plt.show(block = True)
+    init_plot()
+    draw_signal(prediction, color='r', label='prediction')
+    draw_signal(actual, color='b', label='actual')
+    plt.legend()
+    plt.show(block = True)
 
-# Check if failures
-is_failure = compare_single_value(actual, prediction, epsilon=2.0)
-print("Failure(s): ", is_failure)
+    # Check if failures
+    is_failure = compare_single_value(actual, prediction, epsilon=2.0)
+    print("Failure(s): ", is_failure)
+
+run_onnx()

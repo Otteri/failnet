@@ -1,17 +1,12 @@
-import torch
-import argparse
-import numpy as np
 import gym
+import torch
+import numpy as np
 import pulsegen
-import config as cfg
-
-import matplotlib
-import matplotlib.pyplot as plt
 from enum import IntEnum
 from pathlib import Path
-from visualization import draw_signal, init_plot
-from model import Model, Batch
-from filters import filter_signal
+from failnet.visualization import create_plot
+from failnet.model import Model, Batch
+from failnet.filters import filter_signal
 
 # This enum allows to reference feature vectors in an abstract manner.
 class Channel(IntEnum):
@@ -23,23 +18,7 @@ class Channel(IntEnum):
 # Expects data to have form: [B, S, L], where B is batch size,
 # S is number of signals and L is the signal length.
 
-def parse_args() -> argparse:
-    """
-    Parses provided comman line arguments.
-
-    Returns:
-        argparse: arguments
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--steps", type=int, default=10, help="steps to run")
-    parser.add_argument("--show_input", default=False, action="store_true", help="Visualizes input data used for training")
-    parser.add_argument("--make_plots", default=False, action="store_true", help="Visualizes learning process during training")
-    parser.add_argument("--console_only", default=False, action="store_true", help="Use only console window")
-    parser.add_argument("--config_path", type=str, default="config.py", help="Path to a custom config")
-    args = parser.parse_args()
-    return args
-
-def get_data_batch(env) -> (torch.tensor, torch.tensor):
+def get_data_batch(env, repetitions, signal_length, n, show_input=False) -> (torch.tensor, torch.tensor):
     """
     Collects data which can be used for training.
     Data is a 3d array: [B, S, L], where B is batch
@@ -56,31 +35,16 @@ def get_data_batch(env) -> (torch.tensor, torch.tensor):
         input_data: training input data.
         target_data: predictions made by the model, should match to this.
     """
-    n = cfg.predict_n
-    input_data = Batch(cfg.repetitions, 1, cfg.signal_length-n)
-    target_data = Batch(cfg.repetitions, 1, cfg.signal_length-n)
-    for i in range(0, cfg.repetitions):
-        signal = env.record_rotation(viz=args.show_input)
+    #n = cfg.predict_n
+    input_data = Batch(repetitions, 1, signal_length-n)
+    target_data = Batch(repetitions, 1, signal_length-n)
+    for i in range(0, repetitions):
+        signal = env.record_rotation(viz=show_input)
         input_data[i, Channel.SIG1] = signal[:-n]
         target_data[i, Channel.SIG1] = signal[n:]
     return input_data, target_data
 
-def create_plot(iteration, signal1, signal2, signal3):
-    """
-    A helper function for creating plots.
-
-    Args:
-        iteration (int): Used for naming save file.
-        signal 1,2,3 (3d array): Data for plotting.
-    """
-    init_plot()
-    draw_signal(signal1[0, Channel.SIG1], linestyle='-',  color='b', label='input')
-    draw_signal(signal2[0, Channel.SIG1], linestyle='--', color='r', label='filtered input')
-    draw_signal(signal3[0, Channel.SIG1], linestyle='-',  color='g', label='learning outcome')
-    plt.legend()
-    plt.savefig(f"predictions/prediction_{iteration+1}.svg")
-
-def main(args):
+def train(args, cfg):
 
     env = gym.make("PeriodicalSignal-v0", config_path=args.config_path)
 
@@ -101,8 +65,8 @@ def main(args):
         print("STEP:", i)
 
         # 1) Get data
-        train_input, train_target = get_data_batch(env)   # Use different data for \
-        test_input, test_target = get_data_batch(env)     # training and testing...
+        train_input, train_target = get_data_batch(env, cfg.repetitions, cfg.signal_length, cfg.predict_n, args.show_input)   # Use different data for \
+        test_input, test_target = get_data_batch(env, cfg.repetitions, cfg.signal_length, cfg.predict_n, args.show_input)     # training and testing...
         unfiltered_test_input = test_input.data.clone() # for visualization
 
         # 2) Preprocess all data: filter first channel signal
@@ -119,31 +83,7 @@ def main(args):
 
         # 5) Visualize performance
         if args.make_plots:
-            create_plot(i, unfiltered_test_input, test_input, y)
+            create_plot(i, unfiltered_test_input, test_input, y, Channel.SIG1)
 
     # Save outcome
     model.save_model("failnet.pt")
-
-if __name__ == "__main__":
-
-    # Create a directory for weights and plots
-    Path(cfg.data_dir).mkdir(exist_ok=True)
-
-    # Read command line arguments
-    args = parse_args()
-
-    # Check if user wants to load custom config
-    if args.config_path != "config.py":
-        import sys
-        print(f"[INFO] Loading config '{args.config_path}'")
-        sys.path.append(args.config_path)
-        import config as cfg  # override the default
-
-    if args.console_only:
-        # Use different matplotlib backend. This allows us to save plots
-        # without them being rendered. Without GUI, the process just gets 
-        # stuck if we try to visualize without this arg being set to true.
-        matplotlib.use('Agg')
-
-    # Run training loop
-    main(args)

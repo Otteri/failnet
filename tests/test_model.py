@@ -2,7 +2,6 @@ import pytest
 import torch
 import numpy as np
 from os import path, remove
-from . import config as cfg
 from failnet.model import Model, Sequence, Batch
 
 class Data:

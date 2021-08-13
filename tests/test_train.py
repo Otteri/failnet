@@ -1,7 +1,7 @@
 import torch
 import pytest
 import numpy as np
-from failnet.filters import filter_signal 
+from failnet.filters import filter_signal
 
 # Checks that padding works
 def test_signal_filtering_dimensions_stay_same():
