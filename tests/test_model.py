@@ -2,13 +2,13 @@ import pytest
 import torch
 import numpy as np
 from os import path, remove
-from . import config as cfg
 from failnet.model import Model, Sequence, Batch
 
+SIGNAL_LENGTH = 100
 class Data:
-    def __init__(self, signal_length):
+    def __init__(self):
         self.n = 1
-        self.signal_length = signal_length
+        self.signal_length = SIGNAL_LENGTH
         self.input = Batch(1, 1, 100-self.n)
         self.target = Batch(1, 1, 100-self.n)
         self.signal = np.arange(self.signal_length)
@@ -17,7 +17,7 @@ class Data:
 
 # Test data set #1
 # Single sequentally increasing signal from 0 to 100
-data1 = Data(100)
+data1 = Data()
 
 def test_model_creation_with_defaults():
     model = Model()
@@ -45,13 +45,13 @@ def test_model_creation():
     assert model.predict_n == 5
 
 def test_get_prediction():
-    model = Model(predict_n=1, signal_length=100, hidden=16)
+    model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
     prediction = model._get_prediction(data1.input.data.to("cpu"))
     assert type(prediction) == torch.Tensor
     assert list(prediction.shape) == [1, 1, 99]
 
 def test_loss_computation():
-    model = Model(predict_n=1, signal_length=100, hidden=16)
+    model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
     prediction = model._get_prediction(data1.input.data.to("cpu"))
     loss = model._compute_loss(prediction, data1.target.data.to("cpu"))
     loss2 = model._compute_loss(prediction, data1.target.data.to("cpu"))
@@ -61,7 +61,7 @@ def test_loss_computation():
     assert loss == loss2 # We have done nothing, loss should be still the same
 
 def test_train_is_vebose(capfd):
-    model = Model(predict_n=1, signal_length=100, hidden=16)
+    model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
     model.train(data1.input, data1.target, verbose=True)
     out, err = capfd.readouterr()
     assert "loss:" in out
@@ -75,30 +75,38 @@ def test_train_is_vebose(capfd):
 # Since train interface function returns nothing, we must check
 # convergence by outputting losses and then parsing the loss values.
 def test_train_converges(capfd):
-    def get_loss_value_from_string(line):
-        return float(line.split(':')[1])
+    def get_loss_avg_from_strings(losses):
+        cumulative_loss = 0.0
+        loss_count = 0
+        for loss_count, loss_str in enumerate(losses):
+            cumulative_loss += float(loss_str.split(':')[1])
+        return float(cumulative_loss / (loss_count+1))
 
-    model = Model(predict_n=1, signal_length=100, hidden=64)
+    model = Model(predict_n=1, lr=0.05, max_iter=10, signal_length=SIGNAL_LENGTH, hidden=32)
     model.train(data1.input, data1.target, verbose=True)
     out, err = capfd.readouterr()
     losses = out.splitlines()[1:] # 1: exclude [INFO] print
-    loss_value1 = get_loss_value_from_string(losses[0])
-    loss_value2 = get_loss_value_from_string(losses[1])
-    loss_value3 = get_loss_value_from_string(losses[2])
-    assert loss_value1 > loss_value2
-    assert loss_value2 > loss_value3
+    early_loss_avg = get_loss_avg_from_strings(losses[0:5])
+    later_loss_avg = get_loss_avg_from_strings(losses[10:15])
+    assert early_loss_avg > later_loss_avg
 
 def test_predict():
-    model = Model(predict_n=1, signal_length=100, hidden=16)
+    model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
     prediction = model.predict(data1.input, data1.target)
     assert prediction.shape == (1, 1, 99)
     assert prediction.dtype == np.float64
 
-def test_model_save():
-    save_filename = "./test_save.pt"
-    model = Model(predict_n=1, signal_length=100, hidden=16)
-    model.save_model(save_filename)
-    assert path.isfile(save_filename) == True
-    remove(save_filename) 
+def test_model_save_and_load(capfd):
+    # Test saving
+    model_filename = "./test_save.pt"
+    model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
+    model.save_model(model_filename)
+    assert path.isfile(model_filename) == True
+
+    # Test loading
+    model = Model(load_path=model_filename, predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
+    out, err = capfd.readouterr()
+    assert "[INFO] model has been loaded succesfully!" in out
+    remove(model_filename) # clean up
 
 # TODO: tests for multiple signal cases

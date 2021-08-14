@@ -17,7 +17,7 @@ Model properties can be configured using `config.py`. Configuration file also al
 ## Usage
 Now you should be able to train the model. Training takes couple of minutes with default configuration.
 ```bash
-$ python train.py --make_plots
+$ python failnet/train.py --make_plots
 ```
 After training, you may inspect generated plots in `predictions` directory. You can also find the model weights from the same directory.
 
