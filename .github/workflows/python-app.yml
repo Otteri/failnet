@@ -42,5 +42,6 @@ jobs:
       uses: codecov/codecov-action@v1
     - name: Test ONNX generation
       run: |
+        # Do in two steps to check that same config/model is used
         python main.py --config_path "tests/config.py"
-        python failnet/pytorch2onnx.py
+        python main.py --config_path "tests/config.py" --no-train --make_onnx

@@ -2,12 +2,9 @@ import torch
 import gym
 import pulsegen
 import numpy as np
-import config as cfg
-from model import Model
+from failnet.model import Model
 
-# This script can be used for generating onnx model
-
-def generate_onnx():
+def generate_onnx(cfg):
     # Some input data for tracing
     n = cfg.predict_n
     dummy_data = np.zeros((1, 1, cfg.signal_length))
@@ -41,5 +38,3 @@ def generate_onnx():
                     )
 
     print(f"Done, '{output_file}' has been generated!")
-
-generate_onnx()

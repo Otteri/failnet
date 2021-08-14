@@ -1,8 +1,7 @@
 import numpy as np
-import config as cfg
 import onnxruntime as ort
-from detectors import compare_single_value
-from visualization import draw_signal, init_plot
+from failnet.detectors import compare_single_value
+from failnet.visualization import draw_signal, init_plot
 # Env related imports
 import gym
 import pulsegen
@@ -10,9 +9,9 @@ import pulsegen
 import matplotlib
 import matplotlib.pyplot as plt
 
-def run_onnx():
+def run_onnx(args, cfg):
     # Some test data that the model has been trying to learn
-    env = gym.make("PeriodicalSignal-v0", config_path="config.py")
+    env = gym.make("PeriodicalSignal-v0", config_path=args.config_path)
     n = cfg.predict_n
     input_data = np.zeros((1, 1, cfg.signal_length-n))
     target_data = np.zeros((1, 1, cfg.signal_length-n))
@@ -41,5 +40,3 @@ def run_onnx():
     # Check if failures
     is_failure = compare_single_value(actual, prediction, epsilon=2.0)
     print("Failure(s): ", is_failure)
-
-run_onnx()
