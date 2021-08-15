@@ -4,6 +4,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from math import floor
+from statistics import mean
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
 
 class Batch(object):
     """
@@ -219,7 +222,7 @@ class Model(object):
 
         return prediction.cpu().detach().numpy()
 
-    def train(self, train_input, train_target, verbose=True) -> None:
+    def train(self, train_input, train_target, verbose=False) -> float:
         """
         Predicts values in a sequence. Updates NN-weigths.
         LBFGS optimizer requires closure.
@@ -227,16 +230,22 @@ class Model(object):
         Args:
             train_input (Batch): input data for NN.
             train_target (Batch): values that NN should obtain.
+
+        Returns:
+            Mean loss of closure iterations
         """
+        losses = [] # losses in closure
         def closure():
             self.optimizer.zero_grad()
             prediction = self._get_prediction(train_input.data.to(self.device))
             loss = self._compute_loss(prediction, train_target.data.to(self.device))
             if verbose:
-                print("loss:", loss.item())            
+                print("loss:", loss.item())
+            losses.append(loss.item())
             loss.backward()
             return loss
         self.optimizer.step(closure)
+        return mean(losses)
 
     def save_model(self, model_path, epoch=None, loss=None) -> None:
         """

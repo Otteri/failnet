@@ -7,6 +7,7 @@ from pathlib import Path
 from failnet.visualization import create_plot
 from failnet.model import Model, Batch
 from failnet.filters import filter_signal
+from torch.utils.tensorboard import SummaryWriter
 
 # This enum allows to reference feature vectors in an abstract manner.
 class Channel(IntEnum):
@@ -50,6 +51,7 @@ def get_data_batch(env, repetitions, signal_length, n, show_input=False) -> (tor
 def train(args, cfg):
 
     env = gym.make("PeriodicalSignal-v0", config_path=args.config_path)
+    writer = SummaryWriter()
 
     # Create a new model
     model = Model(
@@ -79,7 +81,17 @@ def train(args, cfg):
                 batch[Channel.SIG1] = filter_signal(signal, n=3)
 
         # 3) Train the model with collected data
-        model.train(train_input, train_target)
+        loss = model.train(train_input, train_target)
+
+        # Collect some data for TensorBoard
+        writer.add_scalar("Loss", loss, i)
+        writer.add_histogram("Linear/gradient", model.seq.linear.weight.grad, i)
+        writer.add_histogram("Linear/weight", model.seq.linear.weight, i)
+        writer.add_histogram("Linear/bias", model.seq.linear.bias, i)
+        writer.add_histogram("Conv/gradient", model.seq.conv.weight.grad, i)
+        writer.add_histogram("Conv/weight", model.seq.conv.weight, i)
+        writer.add_histogram("Conv/bias", model.seq.conv.bias, i)
+        writer.flush()
 
         # 4) Check how the model is performing
         y = model.predict(test_input, test_target)
@@ -95,3 +107,5 @@ def train(args, cfg):
 
     # Save outcome
     model.save_model("failnet.pt")
+
+    writer.close()
