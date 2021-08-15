@@ -16,10 +16,11 @@ def parse_args() -> argparse:
     parser.add_argument("--steps", type=int, default=10, help="steps to run")
     parser.add_argument("--show_input", default=False, action="store_true", help="Visualizes input data used for training")
     parser.add_argument("--make_plots", default=False, action="store_true", help="Visualizes learning process during training")
+    parser.add_argument("--make_onnx", default=False, action="store_true", help="Generate ONNX model from trained model")
     parser.add_argument("--console_only", default=False, action="store_true", help="Use only console window")
     parser.add_argument("--config_path", type=str, default="failnet/config.py", help="Path to a custom config")
-    parser.add_argument("--make_onnx", default=False, action="store_true", help="Generate ONNX model from trained model")
     parser.add_argument("--run_onnx", default=False, action="store_true", help="Try to run generated ONNX model")
+    parser.add_argument("--tensorboard", default=False, action="store_true", help="Collect data for TensorBoard")
     args = parser.parse_args()
     return args
 
@@ -51,8 +52,10 @@ if __name__ == "__main__":
     import config as cfg
     args.config_path = os.path.abspath(args.config_path)
 
-    # Create a directory for weights and plots
+    # Create a directory for data
     Path(cfg.data_dir).mkdir(exist_ok=True)
+    if args.make_plots:
+        Path(f"{cfg.data_dir}/predictions").mkdir(exist_ok=True)
 
     if args.console_only:
         # Use different matplotlib backend. This allows us to save plots

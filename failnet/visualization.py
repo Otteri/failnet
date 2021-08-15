@@ -56,3 +56,4 @@ def create_plot(filename, signal1, signal2, signal3):
     draw_signal(signal3, linestyle='-',  color='g', label='learning outcome')
     plt.legend()
     plt.savefig(filename)
+    plt.close()

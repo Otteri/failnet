@@ -5,8 +5,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 from math import floor
 from statistics import mean
-from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter()
 
 class Batch(object):
     """
@@ -107,11 +105,11 @@ class Sequence(nn.Module):
         n2 = floor(n1 * L_batch_out)        
         
         # Define NN build blocks using calulated sizes
-        self.linear = nn.Linear(n2, signal_length - 1)
         self.conv = nn.Conv1d(channels, n1, kernel1, stride=stride1, padding=padding1, groups=groups1)
         self.avg_pool = nn.AvgPool1d(kernel2, stride=stride2)
         self.flatten = nn.Flatten()
         self.batchnorm = nn.BatchNorm1d(n1)
+        self.linear = nn.Linear(n2, signal_length - 1)
 
         print(f"[INFO] using {n1} hidden neurons.")
 
@@ -235,6 +233,7 @@ class Model(object):
             Mean loss of closure iterations
         """
         losses = [] # losses in closure
+
         def closure():
             self.optimizer.zero_grad()
             prediction = self._get_prediction(train_input.data.to(self.device))
