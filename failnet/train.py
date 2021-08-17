@@ -125,3 +125,5 @@ def train(args, cfg):
         )
         writer.flush()
         writer.close()
+    
+    return True
