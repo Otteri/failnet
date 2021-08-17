@@ -20,7 +20,7 @@ class Channel(IntEnum):
 # Expects data to have form: [B, S, L], where B is batch size,
 # S is number of signals and L is the signal length.
 
-def get_data_batch(env, repetitions, signal_length, n, show_input=False) -> (torch.tensor, torch.tensor):
+def get_data_batch(env, cfg, show_input=False) -> (torch.tensor, torch.tensor):
     """
     Collects data which can be used for training.
     Data is a 3d array: [B, S, L], where B is batch
@@ -32,18 +32,17 @@ def get_data_batch(env, repetitions, signal_length, n, show_input=False) -> (tor
 
     Args:
         env (pulsegen): Gym envinment used for data generation.
-        repetitions (int): how many iterations will be recorded
-        signal_length (int): length for single iteration
-        n (int): prediction step size 
+        cfg: configurations, same file as used creating the `env`
         show_input (bool): Optional flag, requires matplotlib
 
     Returns:
         input_data: training input data.
         target_data: predictions made by the model, should match to this.
     """
-    input_data = Batch(repetitions, 1, signal_length-n)
-    target_data = Batch(repetitions, 1, signal_length-n)
-    for i in range(0, repetitions):
+    n = cfg.predict_n
+    input_data = Batch(cfg.repetitions, 1, cfg.signal_length-n)
+    target_data = Batch(cfg.repetitions, 1, cfg.signal_length-n)
+    for i in range(0, cfg.repetitions):
         signal = env.record_rotation(viz=show_input)
         input_data[i, Channel.SIG1] = signal[:-n]
         target_data[i, Channel.SIG1] = signal[n:]
@@ -74,8 +73,8 @@ def train(args, cfg):
         print("STEP:", i+1)
 
         # 1) Get data
-        train_input, train_target = get_data_batch(env, cfg.repetitions, cfg.signal_length, cfg.predict_n, args.show_input)   # Use different data for \
-        test_input, test_target = get_data_batch(env, cfg.repetitions, cfg.signal_length, cfg.predict_n, args.show_input)     # training and testing...
+        train_input, train_target = get_data_batch(env, cfg, args.show_input)   # Use different data for \
+        test_input, test_target = get_data_batch(env, cfg, args.show_input)     # training and testing...
         unfiltered_test_input = test_input.data.clone() # for visualization
 
         # 2) Preprocess all data: filter signal in first channel
