@@ -5,19 +5,30 @@ from os import path, remove
 from failnet.model import Model, Sequence, Batch
 
 SIGNAL_LENGTH = 100
-class Data:
-    def __init__(self):
-        self.n = 1
-        self.signal_length = SIGNAL_LENGTH
-        self.input = Batch(1, 1, 100-self.n)
-        self.target = Batch(1, 1, 100-self.n)
-        self.signal = np.arange(self.signal_length)
-        self.input[0, 0] = self.signal[:-self.n]
-        self.target[0, 0] = self.signal[self.n:]
 
-# Test data set #1
-# Single sequentally increasing signal from 0 to 100
-data1 = Data()
+# Test helper class
+class BatchData:
+    def __init__(self):
+        self.n = None
+        self.signal_length = None
+        self.input = None
+        self.target = None
+        self.input = None
+        self.target = None
+        self.create_batch(SIGNAL_LENGTH)
+
+    # A helper method, which allows to create
+    # input and target data batches with desired dimensions
+    # Returns these as a tuple that can be unpacked an passed for training
+    def create_batch(self, length):
+        self.n = 1
+        self.signal_length = length
+        self.input = Batch(1, 1, length-self.n)
+        self.target = Batch(1, 1, length-self.n)
+        signal = np.arange(self.signal_length-self.n+1)
+        self.input[0, 0] = signal[:-self.n]
+        self.target[0, 0] = signal[self.n:]
+        return (self.input, self.target)
 
 def test_model_creation_with_defaults():
     model = Model()
@@ -45,28 +56,31 @@ def test_model_creation():
     assert model.predict_n == 5
 
 def test_get_prediction():
+    data = BatchData()
     model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
-    prediction = model._get_prediction(data1.input.data.to("cpu"))
+    prediction = model._get_prediction(data.input.data.to("cpu"))
     assert type(prediction) == torch.Tensor
     assert list(prediction.shape) == [1, 1, 99]
 
 def test_loss_computation():
+    data = BatchData()
     model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
-    prediction = model._get_prediction(data1.input.data.to("cpu"))
-    loss = model._compute_loss(prediction, data1.target.data.to("cpu"))
-    loss2 = model._compute_loss(prediction, data1.target.data.to("cpu"))
+    prediction = model._get_prediction(data.input.data.to("cpu"))
+    loss = model._compute_loss(prediction, data.target.data.to("cpu"))
+    loss2 = model._compute_loss(prediction, data.target.data.to("cpu"))
     assert type(loss) == torch.Tensor
     assert loss >= 0.0 # MSE loss min is zero
     assert loss < 1e6 # We never want to end up to millions (exploding gradient)
     assert loss == loss2 # We have done nothing, loss should be still the same
 
 def test_train_is_vebose(capfd):
+    data = BatchData()
     model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
-    model.train(data1.input, data1.target, verbose=True)
+    model.train(*data.create_batch(SIGNAL_LENGTH)  , verbose=True)
     out, err = capfd.readouterr()
     assert "loss:" in out
 
-    model.train(data1.input, data1.target, verbose=False)
+    model.train(*data.create_batch(SIGNAL_LENGTH), verbose=False)
     out, err = capfd.readouterr()
     assert "loss:" not in out
 
@@ -82,8 +96,9 @@ def test_train_converges(capfd):
             cumulative_loss += float(loss_str.split(':')[1])
         return float(cumulative_loss / (loss_count+1))
 
+    data = BatchData()
     model = Model(predict_n=1, lr=0.05, max_iter=10, signal_length=SIGNAL_LENGTH, hidden=32)
-    model.train(data1.input, data1.target, verbose=True)
+    model.train(*data.create_batch(SIGNAL_LENGTH), verbose=True)
     out, err = capfd.readouterr()
     losses = out.splitlines()[1:] # 1: exclude [INFO] print
     early_loss_avg = get_loss_avg_from_strings(losses[0:5])
@@ -91,8 +106,9 @@ def test_train_converges(capfd):
     assert early_loss_avg > later_loss_avg
 
 def test_predict():
+    data = BatchData()
     model = Model(predict_n=1, signal_length=SIGNAL_LENGTH, hidden=16)
-    prediction = model.predict(data1.input, data1.target)
+    prediction = model.predict(*data.create_batch(SIGNAL_LENGTH))
     assert prediction.shape == (1, 1, 99)
     assert prediction.dtype == np.float64
 
@@ -108,5 +124,3 @@ def test_model_save_and_load(capfd):
     out, err = capfd.readouterr()
     assert "[INFO] model has been loaded succesfully!" in out
     remove(model_filename) # clean up
-
-# TODO: tests for multiple signal cases

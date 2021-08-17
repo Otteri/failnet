@@ -6,7 +6,7 @@ print("[INFO] Using test config.py...")
 ###################
 # Data generation #
 ###################
-data_dir = "predictions/"  # Where generated data is saved to
+data_dir = "data/"         # Where generated data is saved to
 repetitions = 3            # How many times pattern is repeated during single period
 signal_length = 51         # Data signal length (number of samples)
 step_size = 6.2832 / signal_length  # Sampling step. (2PI / L, for one cycle).

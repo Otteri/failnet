@@ -21,7 +21,7 @@ def run_onnx(args, cfg):
         target_data[i, 0] = signal[n:]
 
     # Create NN
-    ort_session = ort.InferenceSession('failnet.onnx')
+    ort_session = ort.InferenceSession('data/failnet.onnx')
 
     # Run through NN
     model_predictions = ort_session.run(None, {'input_batch': input_data})

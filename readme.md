@@ -9,7 +9,7 @@ It is recommended to first create a virtual environment, then install requiremen
 ```bash
 $ pip install -r requirements.txt
 ```
-This installs all required python packages and data generation environemnt. (Installation has been found to work with python 3.8.5 at least. Hopefully other versions work as well).
+This installs all required python packages and data generation environemnt. (Installation has been found to work with python 3.8.5 at least. Hopefully it works with other versions as well).
 
 ## Configuration
 Model properties can be configured using `config.py`. Configuration file also allows to adjust generated data properties when using `pulsegen` environment.
@@ -17,12 +17,12 @@ Model properties can be configured using `config.py`. Configuration file also al
 ## Usage
 Now you should be able to train the model. Training takes couple of minutes with default configuration.
 ```bash
-$ python failnet/train.py --make_plots
+$ python main.py --make_plots
 ```
-After training, you may inspect generated plots in `predictions` directory. You can also find the model weights from the same directory.
+After training, you may inspect generated training plots in `data/predictions` directory. You can also find saved model from the `data` directory.
 
 ## ONNX
-Pytorch model can be converted to ONNX model with `pytorch2onnx.py` script. ONNX model can run with `run_onnx.py`.
+Pytorch model can be converted into ONNX model with `main.py --make_onnx`.
 
 ## Simulation environment
 The detector can be tested and developed using simulation environment called
@@ -51,3 +51,6 @@ In previous example, a simple if-condition might have sufficed. In this example,
 
 **3) Multi-sensor system**  
 Some systems can be difficult to understand, which makes modelling of these system really challenging. Luckily, we do not need to consider these relations ourselves. The neural network can do that for us. Let's pretend that we do not know about ideal gas law. In this example, we start increasing pressure in a chamber and we notice that our temperature sensor shows higher temperature. We may think that something is wrong with the sensor, but pretrained detector-model stays quiet. After a month, we repeat the same test. This time temperature decreases wherease pressure increases. This time the detector will notify us. This is because there is an issue either with our sensors or in the system itself.
+
+# TensorBoard
+It is possible to view model weights, biases and gradients after training with TensorBoard. Start training with `--tensorboard` and after finishing it, run: `tensorboard --logdir=data/runs`. Now you can find data from `http://localhost:6006`

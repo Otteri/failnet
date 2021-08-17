@@ -12,7 +12,7 @@ def generate_onnx(cfg):
 
     # Create a new model
     nn_model = Model(
-        load_path     = "failnet.pt",
+        load_path     = "data/failnet.pt",
         training      = False,
         device        = cfg.device,
         signal_length = cfg.signal_length,
@@ -27,7 +27,7 @@ def generate_onnx(cfg):
     input_names = [ "input_batch" ]
     output_names = [ "outpu_batch" ]
 
-    output_file = "failnet.onnx"
+    output_file = "data/failnet.onnx"
     torch.onnx.export(nn_model,
                     dummy_input,
                     output_file,

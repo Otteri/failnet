@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from math import floor
+from statistics import mean
 
 class Batch(object):
     """
@@ -104,11 +105,11 @@ class Sequence(nn.Module):
         n2 = floor(n1 * L_batch_out)        
         
         # Define NN build blocks using calulated sizes
-        self.linear = nn.Linear(n2, signal_length - 1)
         self.conv = nn.Conv1d(channels, n1, kernel1, stride=stride1, padding=padding1, groups=groups1)
         self.avg_pool = nn.AvgPool1d(kernel2, stride=stride2)
         self.flatten = nn.Flatten()
         self.batchnorm = nn.BatchNorm1d(n1)
+        self.linear = nn.Linear(n2, signal_length - 1)
 
         print(f"[INFO] using {n1} hidden neurons.")
 
@@ -219,7 +220,7 @@ class Model(object):
 
         return prediction.cpu().detach().numpy()
 
-    def train(self, train_input, train_target, verbose=True) -> None:
+    def train(self, train_input, train_target, verbose=False) -> float:
         """
         Predicts values in a sequence. Updates NN-weigths.
         LBFGS optimizer requires closure.
@@ -227,16 +228,23 @@ class Model(object):
         Args:
             train_input (Batch): input data for NN.
             train_target (Batch): values that NN should obtain.
+
+        Returns:
+            Mean loss of closure iterations
         """
+        losses = [] # losses in closure
+
         def closure():
             self.optimizer.zero_grad()
             prediction = self._get_prediction(train_input.data.to(self.device))
             loss = self._compute_loss(prediction, train_target.data.to(self.device))
             if verbose:
-                print("loss:", loss.item())            
+                print("loss:", loss.item())
+            losses.append(loss.item())
             loss.backward()
             return loss
         self.optimizer.step(closure)
+        return mean(losses)
 
     def save_model(self, model_path, epoch=None, loss=None) -> None:
         """

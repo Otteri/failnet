@@ -5,3 +5,8 @@ omit =
         # CI-job checks these:
         failnet/pytorch2onnx.py
         failnet/run_onnx.py
+
+[report]
+exclude_lines = 
+        pragma: no cover
+        if args.tensorboard:
