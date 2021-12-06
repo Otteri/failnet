@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      CODECOV_TOKEN: 5cdbe6d0-ae45-4c36-935d-c0ecdcce7c44
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
